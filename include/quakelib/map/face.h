@@ -5,12 +5,15 @@
 #include <memory>
 #include <tuple>
 
+#include <quakelib/surface.h>
+#include <quakelib/vertex.h>
+
 namespace quakelib::map {
-  class Face;
-  using FacePtr = std::shared_ptr<Face>;
+  class MapSurface;
+  using FacePtr = std::shared_ptr<MapSurface>;
   using FaceIter = std::vector<FacePtr>::const_iterator;
 
-  class Face {
+  class MapSurface : public Surface {
   public:
     enum eFaceClassification {
       FRONT = 0,
@@ -22,24 +25,24 @@ namespace quakelib::map {
     enum eFaceType { SOLID = 0, CLIP, SKIP, NODRAW };
 
   public:
-    Face() = default;
+    MapSurface() = default;
 
-    Face(const std::array<fvec3, 3> &points, int textureID, StandardUV uv, float rotation, float scaleX,
-         float scaleY)
+    MapSurface(const std::array<fvec3, 3> &points, int textureID, StandardUV uv, float rotation, float scaleX,
+               float scaleY)
         : planePoints(points), standardUV(uv), textureID(textureID), rotation(rotation), scaleX(scaleX),
           scaleY(scaleY) {
       initPlane();
     };
 
-    Face(const std::array<fvec3, 3> &points, int textureID, ValveUV uv, float rotation, float scaleX,
-         float scaleY)
+    MapSurface(const std::array<fvec3, 3> &points, int textureID, ValveUV uv, float rotation, float scaleX,
+               float scaleY)
         : planePoints(points), valveUV(uv), textureID(textureID), rotation(rotation), scaleX(scaleX),
           scaleY(scaleY), hasValveUV(true) {
       initPlane();
     };
 
-    Face::eFaceClassification Classify(const Face *other);
-    Face::eFaceClassification ClassifyPoint(const fvec3 &v);
+    MapSurface::eFaceClassification Classify(const MapSurface *other);
+    MapSurface::eFaceClassification ClassifyPoint(const fvec3 &v);
     void UpdateAB();
     void UpdateNormals();
     [[nodiscard]] FacePtr Copy() const;
@@ -52,12 +55,8 @@ namespace quakelib::map {
 
     eFaceType Type() const { return type; }
 
-    const std::vector<Vertex> &GetVertices() { return vertices; }
-
-    const std::vector<unsigned short> &GetIndices() { return indices; }
-
     fvec3 center{}, min{}, max{};
-    bool operator==(const Face &arg_) const;
+    bool operator==(const MapSurface &arg_) const;
 
   private:
     fvec4 CalcTangent() { return hasValveUV ? calcValveTangent() : calcStandardTangent(); };
@@ -73,11 +72,9 @@ namespace quakelib::map {
     fvec2 calcValveUV(fvec3 vertex, float texW, float texH);
     bool getIntersection(const fvec3 &start, const fvec3 &end, fvec3 &out_intersectionPt,
                          float &out_percentage);
-    std::pair<FacePtr, FacePtr> splitFace(const Face *other);
+    std::pair<FacePtr, FacePtr> splitFace(const MapSurface *other);
 
     std::array<fvec3, 3> planePoints{};
-    std::vector<Vertex> vertices;
-    std::vector<unsigned short> indices;
     fvec3 planeNormal{};
     float planeDist{};
     StandardUV standardUV{};

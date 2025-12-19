@@ -1,6 +1,6 @@
 #pragma once
 
-#include <quakelib/common/vertex.h>
+#include <quakelib/vertex.h>
 #include <vector>
 
 namespace quakelib {

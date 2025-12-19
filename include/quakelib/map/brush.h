@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include <quakelib/vertex.h>
+
 namespace quakelib::map {
   template <class T> using boolRet = std::pair<bool, T>;
 
@@ -12,7 +14,7 @@ namespace quakelib::map {
   public:
     Brush() = default;
     bool DoesIntersect(const Brush &other);
-    void buildGeometry(const std::map<int, Face::eFaceType> &faceTypes,
+    void buildGeometry(const std::map<int, MapSurface::eFaceType> &faceTypes,
                        const std::map<int, textureBounds> &texBounds);
     void GetBiggerBBox(fvec3 &min, fvec3 &max);
 
@@ -26,7 +28,7 @@ namespace quakelib::map {
   private:
     std::vector<FacePtr> faces;
 
-    void generatePolygons(const std::map<int, Face::eFaceType> &faceTypes,
+    void generatePolygons(const std::map<int, MapSurface::eFaceType> &faceTypes,
                           const std::map<int, textureBounds> &texBounds);
     void windFaceVertices();
     std::vector<FacePtr> clipToBrush(const Brush &other);
@@ -40,6 +42,6 @@ namespace quakelib::map {
     bool isBlockVolume = false;
 
     friend class QMapFile;
-    friend class SolidEntity;
+    friend class SolidMapEntity;
   };
 } // namespace quakelib::map

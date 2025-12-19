@@ -1,4 +1,4 @@
-#include <quakelib/common/entities.h>
+#include <quakelib/entities.h>
 
 #include <iostream>
 #include <regex>
@@ -15,6 +15,10 @@ namespace quakelib {
   ///
 
   const string &Entity::ClassName() const { return m_classname; }
+
+  bool Entity::ClassContains(const std::string &substr) const {
+    return m_classname.find(substr) != std::string::npos;
+  };
 
   const attribMap_t &Entity::Attributes() const { return m_attributes; };
 

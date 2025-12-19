@@ -4,6 +4,7 @@
 #include "types.h"
 #include <array>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -16,14 +17,16 @@ namespace quakelib::map {
     QMapFile() { worldSpawn = nullptr; };
 
     void Parse(const std::string &filename);
+    void Parse(const char *buffer);
+    void Parse(std::istream &strstr);
 
     const std::string &VersionString() { return mapVersionStr; };
 
     int Version() { return mapVersion; };
 
   private:
-    void parse_entity_attributes(std::string l, BaseEntity *ent);
-    void parse_entity_planes(std::stringstream &lines, SolidEntity *ent);
+    void parse_entity_attributes(std::string l, Entity *ent);
+    void parse_entity_planes(std::stringstream &lines, SolidMapEntity *ent);
     void parse_wad_string(const std::string &wads);
 
   private:
@@ -31,7 +34,7 @@ namespace quakelib::map {
 
     int mapVersion = STANDARD_VERSION;
     std::string mapVersionStr = "100";
-    SolidEntity *worldSpawn;
+    SolidMapEntity *worldSpawn;
     std::vector<SolidEntityPtr> solidEntities;
     std::vector<PointEntityPtr> pointEntities;
     std::vector<std::string> textures;

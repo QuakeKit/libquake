@@ -2,8 +2,8 @@
 
 namespace quakelib::map {
 
-  void SolidEntity::generateMesh(const std::map<int, Face::eFaceType> &faceTypes,
-                                 const std::map<int, textureBounds> &texBounds) {
+  void SolidMapEntity::generateMesh(const std::map<int, MapSurface::eFaceType> &faceTypes,
+                                    const std::map<int, textureBounds> &texBounds) {
     if (!brushes.empty()) {
       min = brushes[0].min;
       max = brushes[0].max;
@@ -15,7 +15,7 @@ namespace quakelib::map {
     center = CalculateCenterFromBBox(min, max);
   }
 
-  void SolidEntity::csgUnion() {
+  void SolidMapEntity::csgUnion() {
     if (!brushes.empty()) {
       min = brushes[0].min;
       max = brushes[0].max;

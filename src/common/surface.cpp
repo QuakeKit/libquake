@@ -1,4 +1,4 @@
-#include <quakelib/common/surface.h>
+#include <quakelib/surface.h>
 
 namespace quakelib {
   const std::vector<Vertex> &Surface::Vertices() const { return m_vertices; }

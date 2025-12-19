@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include <quakelib/surface.h>
 #include <quakelib/tue/vec.hpp>
 
 namespace quakelib {
@@ -26,8 +27,12 @@ namespace quakelib {
 
   class Entity {
   public:
+    explicit Entity(EntityType type) : m_type(type) {};
     virtual void FillFromParsed(ParsedEntity *pe);
-    const std::string &ClassName() const;
+    [[nodiscard]] const std::string &ClassName() const;
+    [[nodiscard]] bool ClassContains(const std::string &substr) const;
+
+    // Attribute Methods
     const attribMap_t &Attributes() const;
     std::string AttributeStr(const std::string &classname);
     float AttributeFloat(const std::string &classname);
@@ -44,6 +49,7 @@ namespace quakelib {
 
   class PointEntity : public Entity {
   public:
+    PointEntity() : Entity(EntityType::POINT) {};
     virtual void FillFromParsed(ParsedEntity *pe);
     const tue::fvec3 &Origin() const;
     float Angle();
@@ -55,10 +61,11 @@ namespace quakelib {
 
   class SolidEntity : public Entity {
   public:
+    SolidEntity() : Entity(EntityType::SOLID) {};
     virtual void FillFromParsed(ParsedEntity *pe);
 
   protected:
-    std::vector<int> m_surfaces;
+    std::vector<Surface> m_surfaces;
     bool m_hasPhongShading = false;
   };
 

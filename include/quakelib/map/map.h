@@ -22,6 +22,7 @@ namespace quakelib::map {
     ~QMap() = default;
 
     void LoadFile(const std::string &filename, getTextureBoundsCb getTextureBounds = nullptr);
+    void LoadBuffer(const char *buffer, getTextureBoundsCb getTextureBounds);
     void GenerateGeometry(bool clipBrushes = true);
     void GatherPolygons(int entityID, const polygonGatherCb &);
 
@@ -35,9 +36,9 @@ namespace quakelib::map {
 
     QMapFile *MapData() { return map_file.get(); };
 
-    void SetFaceTypeByTextureID(const std::string &texture, Face::eFaceType type);
+    void SetFaceTypeByTextureID(const std::string &texture, MapSurface::eFaceType type);
 
-    const SolidEntity *WorldSpawn() { return map_file->worldSpawn; }
+    const SolidMapEntity *WorldSpawn() { return map_file->worldSpawn; }
 
     const std::vector<SolidEntityPtr> &GetSolidEntities() { return map_file->solidEntities; };
 
@@ -48,7 +49,7 @@ namespace quakelib::map {
   private:
     bool getPolygonsByTextureID(int entityID, int texID, std::vector<FacePtr> &list);
 
-    std::map<int, Face::eFaceType> textureIDTypes;
+    std::map<int, MapSurface::eFaceType> textureIDTypes;
     std::map<int, textureBounds> textureIDBounds;
     std::shared_ptr<QMapFile> map_file;
   };

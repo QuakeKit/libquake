@@ -3,6 +3,16 @@
 #include <iostream>
 
 namespace quakelib::map {
+  void QMap::LoadBuffer(const char *buffer, getTextureBoundsCb getTextureBounds) {
+    map_file = std::make_shared<QMapFile>();
+    map_file->Parse(buffer);
+    if (getTextureBounds != nullptr) {
+      for (int i = 0; i < map_file->textures.size(); i++) {
+        textureIDBounds[i] = getTextureBounds(map_file->textures[i].c_str());
+      }
+    }
+  }
+
   void QMap::LoadFile(const std::string &filename, getTextureBoundsCb getTextureBounds) {
     map_file = std::make_shared<QMapFile>();
     map_file->Parse(filename);
@@ -22,7 +32,7 @@ namespace quakelib::map {
     }
   }
 
-  void QMap::SetFaceTypeByTextureID(const std::string &texture, Face::eFaceType type) {
+  void QMap::SetFaceTypeByTextureID(const std::string &texture, MapSurface::eFaceType type) {
     if (map_file == nullptr)
       return;
 
@@ -37,7 +47,7 @@ namespace quakelib::map {
   std::vector<PointEntityPtr> QMap::GetPointEntitiesByClass(const std::string &className) {
     std::vector<PointEntityPtr> ents;
     for (auto pe : map_file->pointEntities) {
-      if (pe->classname.find(className) != std::string::npos) {
+      if (pe->ClassContains(className)) {
         ents.push_back(pe);
       }
     }

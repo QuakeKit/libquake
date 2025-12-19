@@ -4,17 +4,17 @@
 namespace quakelib::map {
   static constexpr double CMP_EPSILON_DISTANCE = 0.001;
 
-  void Face::initPlane() {
+  void MapSurface::initPlane() {
     fvec3 v0v1 = planePoints[1] - planePoints[0];
     fvec3 v1v2 = planePoints[2] - planePoints[1];
     planeNormal = normalize(cross(v1v2, v0v1));
     planeDist = dot(planeNormal, planePoints[0]);
   }
 
-  FacePtr Face::Copy() const {
-    auto newp = std::make_shared<Face>();
-    newp->vertices = vertices;
-    newp->indices = indices;
+  FacePtr MapSurface::Copy() const {
+    auto newp = std::make_shared<MapSurface>();
+    newp->m_vertices = m_vertices;
+    newp->m_indices = m_indices;
     newp->planeNormal = planeNormal;
     newp->planeDist = planeDist;
     newp->valveUV = valveUV;
@@ -26,27 +26,27 @@ namespace quakelib::map {
     return newp;
   }
 
-  void Face::UpdateNormals() {
-    for (int i = 0; i < indices.size(); i += 3) {
+  void MapSurface::UpdateNormals() {
+    for (int i = 0; i < m_indices.size(); i += 3) {
       // get the three vertices that make the faces
-      const auto &p1 = vertices[indices[i + 0]].point;
-      const auto &p2 = vertices[indices[i + 1]].point;
-      const auto &p3 = vertices[indices[i + 2]].point;
+      const auto &p1 = m_vertices[m_indices[i + 0]].point;
+      const auto &p2 = m_vertices[m_indices[i + 1]].point;
+      const auto &p3 = m_vertices[m_indices[i + 2]].point;
 
       auto v1 = p2 - p1;
       auto v2 = p3 - p1;
       auto normal = normalize(cross(v1, v2));
 
-      vertices[indices[i + 0]].normal = normal;
-      vertices[indices[i + 1]].normal = normal;
-      vertices[indices[i + 2]].normal = normal;
+      m_vertices[m_indices[i + 0]].normal = normal;
+      m_vertices[m_indices[i + 1]].normal = normal;
+      m_vertices[m_indices[i + 2]].normal = normal;
     }
   }
 
-  Face::eFaceClassification Face::Classify(const Face *other) {
+  MapSurface::eFaceClassification MapSurface::Classify(const MapSurface *other) {
     bool bFront = false, bBack = false;
-    for (int i = 0; i < (int)other->vertices.size(); i++) {
-      double dist = dot(planeNormal, other->vertices[i].point) - planeDist;
+    for (int i = 0; i < (int)other->m_vertices.size(); i++) {
+      double dist = dot(planeNormal, other->m_vertices[i].point) - planeDist;
       if (dist > CMP_EPSILON_DISTANCE) {
         if (bBack) {
           return eFaceClassification::SPANNING;
@@ -71,8 +71,8 @@ namespace quakelib::map {
     return eFaceClassification::ON_PLANE;
   }
 
-  bool Face::getIntersection(const fvec3 &start, const fvec3 &end, fvec3 &out_intersectionPt,
-                             float &out_percentage) {
+  bool MapSurface::getIntersection(const fvec3 &start, const fvec3 &end, fvec3 &out_intersectionPt,
+                                   float &out_percentage) {
     fvec3 dir = normalize(end - start);
     float num, denom;
 
@@ -91,25 +91,25 @@ namespace quakelib::map {
     return true;
   }
 
-  Face::eFaceClassification Face::ClassifyPoint(const fvec3 &v) {
+  MapSurface::eFaceClassification MapSurface::ClassifyPoint(const fvec3 &v) {
     double dist = tue::math::dot(planeNormal, v) - planeDist;
     if (dist > epsilon) {
-      return Face::eFaceClassification::FRONT;
+      return MapSurface::eFaceClassification::FRONT;
     }
     if (dist < -epsilon) {
-      return Face::eFaceClassification::BACK;
+      return MapSurface::eFaceClassification::BACK;
     }
-    return Face::eFaceClassification::ON_PLANE;
+    return MapSurface::eFaceClassification::ON_PLANE;
   }
 
-  void Face::UpdateAB() {
-    if (vertices.empty())
+  void MapSurface::UpdateAB() {
+    if (m_vertices.empty())
       return;
 
-    min = vertices[0].point;
-    max = vertices[0].point;
+    min = m_vertices[0].point;
+    max = m_vertices[0].point;
 
-    for (const auto &vert : vertices) {
+    for (const auto &vert : m_vertices) {
       if (vert.point[0] < min[0])
         min[0] = vert.point[0];
 
@@ -130,19 +130,19 @@ namespace quakelib::map {
     }
   }
 
-  bool Face::operator==(const Face &other) const {
-    if (vertices.size() != other.vertices.size() || planeDist != other.planeDist ||
+  bool MapSurface::operator==(const MapSurface &other) const {
+    if (m_vertices.size() != other.m_vertices.size() || planeDist != other.planeDist ||
         planeNormal != other.planeNormal)
       return false;
 
-    for (int i = 0; i < vertices.size(); i++) {
-      if (vertices[i].point != other.vertices[i].point)
+    for (int i = 0; i < m_vertices.size(); i++) {
+      if (m_vertices[i].point != other.m_vertices[i].point)
         return false;
 
-      if (vertices[i].uv[0] != other.vertices[i].uv[0])
+      if (m_vertices[i].uv[0] != other.m_vertices[i].uv[0])
         return false;
 
-      if (vertices[i].uv[1] != other.vertices[i].uv[1])
+      if (m_vertices[i].uv[1] != other.m_vertices[i].uv[1])
         return false;
     }
 
@@ -152,13 +152,13 @@ namespace quakelib::map {
     return true;
   }
 
-  fvec4 Face::calcStandardTangent() {
+  fvec4 MapSurface::calcStandardTangent() {
     float du = dot(planeNormal, UP_VEC);
     float dr = dot(planeNormal, RIGHT_VEC);
     float df = dot(planeNormal, FORWARD_VEC);
-    float dua = abs(du);
-    float dra = abs(dr);
-    float dfa = abs(df);
+    float dua = fabs(du);
+    float dra = fabs(dr);
+    float dfa = fabs(df);
 
     fvec3 uAxis{0};
     float vSign = 0.0f;
@@ -179,19 +179,19 @@ namespace quakelib::map {
     return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
   }
 
-  fvec4 Face::calcValveTangent() {
+  fvec4 MapSurface::calcValveTangent() {
     fvec3 uAxis = normalize(valveUV.u.xyz());
     fvec3 vAxis = normalize(valveUV.v.xyz());
     float vSign = copysignf(1.0, dot(cross((fvec3)planeNormal, uAxis), vAxis));
     return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
   }
 
-  fvec2 Face::calcStandardUV(fvec3 vertex, float texW, float texH) {
+  fvec2 MapSurface::calcStandardUV(fvec3 vertex, float texW, float texH) {
     fvec2 uvOut{0};
 
-    float du = abs(dot(planeNormal, UP_VEC));
-    float dr = abs(dot(planeNormal, RIGHT_VEC));
-    float df = abs(dot(planeNormal, FORWARD_VEC));
+    float du = fabs(dot(planeNormal, UP_VEC));
+    float dr = fabs(dot(planeNormal, RIGHT_VEC));
+    float df = fabs(dot(planeNormal, FORWARD_VEC));
 
     if (du >= dr && du >= df)
       uvOut = fvec2(vertex[0], -vertex[1]);
@@ -215,7 +215,7 @@ namespace quakelib::map {
     return uvOut;
   }
 
-  fvec2 Face::calcValveUV(fvec3 vertex, float texW, float texH) {
+  fvec2 MapSurface::calcValveUV(fvec3 vertex, float texW, float texH) {
     fvec2 uvOut{0};
     fvec3 uAxis = valveUV.u.xyz();
     fvec3 vAxis = valveUV.v.xyz();
@@ -237,30 +237,30 @@ namespace quakelib::map {
     return uvOut;
   }
 
-  std::pair<FacePtr, FacePtr> Face::splitFace(const Face *other) {
-    std::vector<Face::eFaceClassification> pCF;
-    pCF.resize(other->vertices.size());
-    for (int i = 0; i < other->vertices.size(); i++)
-      pCF[i] = ClassifyPoint(other->vertices[i].point);
+  std::pair<FacePtr, FacePtr> MapSurface::splitFace(const MapSurface *other) {
+    std::vector<MapSurface::eFaceClassification> pCF;
+    pCF.resize(other->m_vertices.size());
+    for (int i = 0; i < other->m_vertices.size(); i++)
+      pCF[i] = ClassifyPoint(other->m_vertices[i].point);
 
-    FacePtr front = std::make_shared<Face>();
-    FacePtr back = std::make_shared<Face>();
+    FacePtr front = std::make_shared<MapSurface>();
+    FacePtr back = std::make_shared<MapSurface>();
 
-    for (int i = 0; i < other->vertices.size(); i++) {
+    for (int i = 0; i < other->m_vertices.size(); i++) {
       switch (pCF[i]) {
       case FRONT: {
-        front->vertices.push_back(other->vertices[i]);
+        front->m_vertices.push_back(other->m_vertices[i]);
         break;
       }
       case BACK: {
-        back->vertices.push_back(other->vertices[i]);
+        back->m_vertices.push_back(other->m_vertices[i]);
         break;
       }
       case ON_PLANE:
         std::cout << "on plane" << std::endl;
         {
-          front->vertices.push_back(other->vertices[i]);
-          back->vertices.push_back(other->vertices[i]);
+          front->m_vertices.push_back(other->m_vertices[i]);
+          back->m_vertices.push_back(other->m_vertices[i]);
           break;
         }
       case SPANNING:
@@ -270,30 +270,30 @@ namespace quakelib::map {
       int j = i + 1;
       bool ignore = false;
 
-      if (j == (other->vertices.size() - 1))
+      if (j == (other->m_vertices.size() - 1))
         j = 0;
 
-      if ((pCF[i] == Face::eFaceClassification::ON_PLANE) &&
-          (pCF[j] != Face::eFaceClassification::ON_PLANE)) {
+      if ((pCF[i] == MapSurface::eFaceClassification::ON_PLANE) &&
+          (pCF[j] != MapSurface::eFaceClassification::ON_PLANE)) {
         ignore = true;
-      } else if ((pCF[j] == Face::eFaceClassification::ON_PLANE) &&
-                 (pCF[i] != Face::eFaceClassification::ON_PLANE)) {
+      } else if ((pCF[j] == MapSurface::eFaceClassification::ON_PLANE) &&
+                 (pCF[i] != MapSurface::eFaceClassification::ON_PLANE)) {
         ignore = true;
       }
 
       if ((!ignore) && (pCF[i] != pCF[j])) {
         Vertex v{};
         float p;
-        getIntersection(other->vertices[i].point, other->vertices[j].point, v.point, p);
+        getIntersection(other->m_vertices[i].point, other->m_vertices[j].point, v.point, p);
 
-        v.uv[0] = other->vertices[j].uv[0] - other->vertices[i].uv[0];
-        v.uv[1] = other->vertices[j].uv[1] - other->vertices[i].uv[1];
+        v.uv[0] = other->m_vertices[j].uv[0] - other->m_vertices[i].uv[0];
+        v.uv[1] = other->m_vertices[j].uv[1] - other->m_vertices[i].uv[1];
 
-        v.uv[0] = other->vertices[i].uv[0] + (p * v.uv[0]);
-        v.uv[1] = other->vertices[i].uv[1] + (p * v.uv[1]);
+        v.uv[0] = other->m_vertices[i].uv[0] + (p * v.uv[0]);
+        v.uv[1] = other->m_vertices[i].uv[1] + (p * v.uv[1]);
 
-        front->vertices.push_back(v);
-        back->vertices.push_back(v);
+        front->m_vertices.push_back(v);
+        back->m_vertices.push_back(v);
       }
     }
     return {front, back};

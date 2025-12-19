@@ -8,41 +8,11 @@
 #include "brush.h"
 #include "types.h"
 
+#include <quakelib/entities.h>
+
 namespace quakelib::map {
-  class BaseEntity {
+  class SolidMapEntity : public SolidEntity {
   public:
-    enum eEntityType {
-      POINT = 0,
-      SOLID = 1,
-    };
-
-    explicit BaseEntity(eEntityType type) : type(type) {};
-
-    eEntityType type{};
-    std::string classname;
-    float angle{};
-    fvec3 origin{};
-    std::string tbType;
-    std::string tbName;
-    std::map<std::string, std::string> attributes;
-    friend class QMapFile;
-  };
-
-  class PointEntity : public BaseEntity {
-  public:
-    PointEntity() : BaseEntity(POINT) {};
-  };
-
-  class SolidEntity : public BaseEntity {
-  public:
-    SolidEntity() : BaseEntity(SOLID) {};
-
-    [[nodiscard]] std::string ClassName() const { return classname; };
-
-    [[nodiscard]] bool ClassContains(const std::string &substr) const {
-      return classname.find(substr) != std::string::npos;
-    };
-
     const std::vector<Brush> &GetOriginalBrushes() { return brushes; }
 
     const std::vector<Brush> &GetBrushes() {
@@ -64,7 +34,7 @@ namespace quakelib::map {
     size_t StatsClippedFaces() const { return stats_clippedFaces; }
 
   private:
-    void generateMesh(const std::map<int, Face::eFaceType> &faceTypes,
+    void generateMesh(const std::map<int, MapSurface::eFaceType> &faceTypes,
                       const std::map<int, textureBounds> &texBounds);
     void csgUnion();
 
@@ -83,7 +53,7 @@ namespace quakelib::map {
     friend class QMap;
   };
 
-  using BaseEntityPtr = std::shared_ptr<BaseEntity>;
-  using SolidEntityPtr = std::shared_ptr<SolidEntity>;
+  using BaseEntityPtr = std::shared_ptr<Entity>;
+  using SolidEntityPtr = std::shared_ptr<SolidMapEntity>;
   using PointEntityPtr = std::shared_ptr<PointEntity>;
 } // namespace quakelib::map

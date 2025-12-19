@@ -5,7 +5,7 @@
 namespace quakelib::map {
   const auto fv3zero = Vertex();
 
-  void Brush::buildGeometry(const std::map<int, Face::eFaceType> &faceTypes,
+  void Brush::buildGeometry(const std::map<int, MapSurface::eFaceType> &faceTypes,
                             const std::map<int, textureBounds> &texBounds) {
     generatePolygons(faceTypes, texBounds);
     windFaceVertices();
@@ -42,9 +42,9 @@ namespace quakelib::map {
   Vertex Brush::mergeDuplicate(int from, Vertex &v) {
     for (int n = 0; n <= from; n++) {
       auto otherPoly = faces[n];
-      for (int i = 0; i < otherPoly->vertices.size(); i++) {
-        if (dist3(otherPoly->vertices[i].point, v.point) < CMP_EPSILON) {
-          return otherPoly->vertices[i];
+      for (int i = 0; i < otherPoly->m_vertices.size(); i++) {
+        if (dist3(otherPoly->m_vertices[i].point, v.point) < CMP_EPSILON) {
+          return otherPoly->m_vertices[i];
         }
       }
     }
@@ -54,14 +54,14 @@ namespace quakelib::map {
   void Brush::indexFaceVertices() {
 
     for (auto &f : faces) {
-      if (f->vertices.size() < 3)
+      if (f->m_vertices.size() < 3)
         continue;
 
-      f->indices.resize((f->vertices.size() - 2) * 3);
-      for (int i = 0; i < f->vertices.size() - 2; i++) {
-        f->indices.push_back(0);
-        f->indices.push_back(i + 1);
-        f->indices.push_back(i + 2);
+      f->m_indices.resize((f->m_vertices.size() - 2) * 3);
+      for (int i = 0; i < f->m_vertices.size() - 2; i++) {
+        f->m_indices.push_back(0);
+        f->m_indices.push_back(i + 1);
+        f->m_indices.push_back(i + 2);
       }
       f->UpdateNormals();
     }
@@ -70,19 +70,19 @@ namespace quakelib::map {
   void Brush::windFaceVertices() {
 
     for (auto &f : faces) {
-      if (f->vertices.size() < 3)
+      if (f->m_vertices.size() < 3)
         continue;
 
-      auto windFaceBasis = normalize(f->vertices[1].point - f->vertices[0].point);
+      auto windFaceBasis = normalize(f->m_vertices[1].point - f->m_vertices[0].point);
       auto windFaceCenter = fvec3();
       auto windFaceNormal = normalize(f->planeNormal);
 
-      for (auto v : f->vertices) {
+      for (auto v : f->m_vertices) {
         windFaceCenter += v.point;
       }
-      windFaceCenter /= (float)f->vertices.size();
+      windFaceCenter /= (float)f->m_vertices.size();
 
-      std::stable_sort(f->vertices.begin(), f->vertices.end(), [&](Vertex l, Vertex r) {
+      std::stable_sort(f->m_vertices.begin(), f->m_vertices.end(), [&](Vertex l, Vertex r) {
         fvec3 u = normalize(windFaceBasis);
         fvec3 v = normalize(cross(u, windFaceNormal));
 
@@ -107,23 +107,23 @@ namespace quakelib::map {
 
   FacePtr Brush::clipToList(FaceIter first, const FaceIter &firstEnd, FaceIter second,
                             const FaceIter &secondEnd) {
-    if (second->get()->Type() != Face::SOLID) {
+    if (second->get()->Type() != MapSurface::SOLID) {
       return *first;
     }
 
     auto ecp = second->get()->Classify(first->get());
     switch (ecp) {
-    case Face::FRONT: // poligon is outside of brush
+    case MapSurface::FRONT: // poligon is outside of brush
     {
       return *first;
     }
-    case Face::BACK: {
+    case MapSurface::BACK: {
       if (second + 1 == secondEnd) {
         return nullptr; // polygon is inside of brush
       }
       return clipToList(first, firstEnd, ++second, secondEnd);
     }
-    case Face::ON_PLANE: {
+    case MapSurface::ON_PLANE: {
       double angle = dot(first->get()->planeNormal, second->get()->planeNormal) - 1;
       if ((angle < epsilon) && (angle > -epsilon)) {
         return *first;
@@ -135,7 +135,7 @@ namespace quakelib::map {
 
       return clipToList(first, firstEnd, ++second, secondEnd);
     }
-    case Face::SPANNING: {
+    case MapSurface::SPANNING: {
       // TODO: calculate split
       return *first;
     }
@@ -173,7 +173,7 @@ namespace quakelib::map {
     return normalize(normal);
   }
 
-  void Brush::generatePolygons(const std::map<int, Face::eFaceType> &faceTypes,
+  void Brush::generatePolygons(const std::map<int, MapSurface::eFaceType> &faceTypes,
                                const std::map<int, textureBounds> &texBounds) {
     float phongAngle = 89.0;
     for (int i = 0; i < faces.size(); i++) {
@@ -191,7 +191,7 @@ namespace quakelib::map {
           auto kv = faceTypes.find(faces[k]->textureID);
           if (kv != faceTypes.end()) {
             faces[k]->type = kv->second;
-            if (faces[k]->type == Face::CLIP) {
+            if (faces[k]->type == MapSurface::CLIP) {
               isBlockVolume = true;
             }
           }
@@ -213,9 +213,9 @@ namespace quakelib::map {
             v.uv = faces[k]->CalcUV(v.point, tb->second.width, tb->second.height);
           }
 
-          if (v.inList(faces[k]->vertices))
+          if (v.inList(faces[k]->m_vertices))
             continue;
-          faces[k]->vertices.push_back(v);
+          faces[k]->m_vertices.push_back(v);
         }
 
       faces[i]->UpdateAB();
@@ -225,7 +225,7 @@ namespace quakelib::map {
   bool Brush::isLegalVertex(const Vertex &v, const std::vector<FacePtr> &faces) {
     for (const auto &f : faces) {
       auto proj = tue::math::dot(f->planeNormal, v.point);
-      if (proj > f->planeDist && abs(f->planeDist - proj) > 0.0008) {
+      if (proj > f->planeDist && fabs(f->planeDist - proj) > 0.0008) {
         return false;
       }
     }
@@ -246,14 +246,14 @@ namespace quakelib::map {
   }
 
   void Brush::calculateAABB() {
-    if (faces[0]->vertices.size() == 0)
+    if (faces[0]->m_vertices.size() == 0)
       return;
 
-    min = faces[0]->vertices[0].point;
-    max = faces[0]->vertices[0].point;
+    min = faces[0]->m_vertices[0].point;
+    max = faces[0]->m_vertices[0].point;
 
     for (const auto &face : faces)
-      for (const auto &vert : face->vertices) {
+      for (const auto &vert : face->m_vertices) {
         if (vert.point[0] < min[0])
           min[0] = vert.point[0];
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include <quakelib/common/entities.h>
+#include <quakelib/entities.h>
 #include <sstream>
 
 namespace quakelib {
@@ -12,6 +12,7 @@ namespace quakelib {
 
   public:
     static void ParseEntites(const std::string &buffer, EntityParsedFunc fn);
+    static void ParseEntites(std::istream &stream, EntityParsedFunc fn);
   };
 
 } // namespace quakelib

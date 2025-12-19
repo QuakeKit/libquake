@@ -1,8 +1,7 @@
-#include <quakelib/common/entity_parser.h>
+#include <quakelib/entity_parser.h>
 
 #include <iostream>
 #include <regex>
-#include <sstream>
 #include <string>
 
 namespace quakelib {
@@ -27,8 +26,8 @@ namespace quakelib {
     return s;
   }
 
-  void EntityParser::ParseEntites(const std::string &buffer, EntityParsedFunc fn) {
-    auto strstr = std::stringstream(buffer);
+  // const std::istream &stream
+  void EntityParser::ParseEntites(std::istream &strstr, EntityParsedFunc fn) {
     std::vector<ParsedEntity *> objects;
     ParsedEntity *current = nullptr;
     bool foundWorldSpawn = false;
@@ -55,7 +54,9 @@ namespace quakelib {
         } else {
           newobj->parent = current;
           current->children.push_back(newobj);
-          current->type = EntityType::SOLID;
+          if (current->type != EntityType::WORLDSPAWN) {
+            current->type = EntityType::SOLID;
+          }
           current = newobj;
         }
         continue;
@@ -72,8 +73,8 @@ namespace quakelib {
         if (current->parent == nullptr && line.rfind("\"model\" \"*", 0) != std::string::npos) {
           current->type = EntityType::SOLID;
         }
-        // if it is worldspawn, it's a solid
-        if (!foundWorldSpawn && line.rfind("\"classname\" \"worldspawn\"", 0)) {
+        // if it is worldspawn, it's a worldspawn
+        if (!foundWorldSpawn && line == "\"classname\" \"worldspawn\"") {
           current->type = EntityType::WORLDSPAWN;
           foundWorldSpawn = true;
         }
@@ -85,6 +86,11 @@ namespace quakelib {
     }
 
     return;
+  }
+
+  void EntityParser::ParseEntites(const std::string &buffer, EntityParsedFunc fn) {
+    auto strstr = std::stringstream(buffer);
+    ParseEntites(strstr, fn);
   }
 
   void Entity::FillFromParsed(ParsedEntity *pe) {

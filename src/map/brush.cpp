@@ -24,9 +24,9 @@ namespace quakelib::map {
   }
 
   boolRet<Vertex> Brush::intersectPlanes(const FacePtr &a, const FacePtr &b, const FacePtr &c) {
-    fvec3 n0 = a->planeNormal;
-    fvec3 n1 = b->planeNormal;
-    fvec3 n2 = c->planeNormal;
+    fvec3 n0 = a->m_planeNormal;
+    fvec3 n1 = b->m_planeNormal;
+    fvec3 n2 = c->m_planeNormal;
 
     float denom = dot(cross(n0, n1), n2);
     if (denom < CMP_EPSILON)
@@ -34,14 +34,15 @@ namespace quakelib::map {
 
     Vertex v = {};
     v.point =
-        (cross(n1, n2) * a->planeDist + cross(n2, n0) * b->planeDist + cross(n0, n1) * c->planeDist) / denom;
+        (cross(n1, n2) * a->m_planeDist + cross(n2, n0) * b->m_planeDist + cross(n0, n1) * c->m_planeDist) /
+        denom;
 
     return boolRet<Vertex>(true, v);
   }
 
   Vertex Brush::mergeDuplicate(int from, Vertex &v) {
     for (int n = 0; n <= from; n++) {
-      auto otherPoly = faces[n];
+      auto otherPoly = m_faces[n];
       for (int i = 0; i < otherPoly->m_vertices.size(); i++) {
         if (dist3(otherPoly->m_vertices[i].point, v.point) < CMP_EPSILON) {
           return otherPoly->m_vertices[i];
@@ -53,7 +54,7 @@ namespace quakelib::map {
 
   void Brush::indexFaceVertices() {
 
-    for (auto &f : faces) {
+    for (auto &f : m_faces) {
       if (f->m_vertices.size() < 3)
         continue;
 
@@ -69,13 +70,13 @@ namespace quakelib::map {
 
   void Brush::windFaceVertices() {
 
-    for (auto &f : faces) {
+    for (auto &f : m_faces) {
       if (f->m_vertices.size() < 3)
         continue;
 
       auto windFaceBasis = normalize(f->m_vertices[1].point - f->m_vertices[0].point);
       auto windFaceCenter = fvec3();
-      auto windFaceNormal = normalize(f->planeNormal);
+      auto windFaceNormal = normalize(f->m_planeNormal);
 
       for (auto v : f->m_vertices) {
         windFaceCenter += v.point;
@@ -124,7 +125,7 @@ namespace quakelib::map {
       return clipToList(first, firstEnd, ++second, secondEnd);
     }
     case MapSurface::ON_PLANE: {
-      double angle = dot(first->get()->planeNormal, second->get()->planeNormal) - 1;
+      double angle = dot(first->get()->m_planeNormal, second->get()->m_planeNormal) - 1;
       if ((angle < epsilon) && (angle > -epsilon)) {
         return *first;
       }
@@ -144,12 +145,12 @@ namespace quakelib::map {
   }
 
   std::vector<FacePtr> Brush::clipToBrush(const Brush &other) {
-    auto otherFaces_iter = other.faces.begin();
-    auto faces_iter = faces.begin();
+    auto otherFaces_iter = other.m_faces.begin();
+    auto faces_iter = m_faces.begin();
     std::vector<FacePtr> clippedFaces;
-    while (faces_iter != faces.cend()) {
+    while (faces_iter != m_faces.cend()) {
 
-      auto clippedPoly = clipToList(faces_iter, faces.cend(), otherFaces_iter, other.faces.cend());
+      auto clippedPoly = clipToList(faces_iter, m_faces.cend(), otherFaces_iter, other.m_faces.cend());
       if (clippedPoly != nullptr) {
         clippedFaces.push_back(clippedPoly);
       }
@@ -176,56 +177,56 @@ namespace quakelib::map {
   void Brush::generatePolygons(const std::map<int, MapSurface::eFaceType> &faceTypes,
                                const std::map<int, textureBounds> &texBounds) {
     float phongAngle = 89.0;
-    for (int i = 0; i < faces.size(); i++) {
-      if (faces[i] == nullptr)
+    for (int i = 0; i < m_faces.size(); i++) {
+      if (m_faces[i] == nullptr)
         continue;
 
-      for (int j = 0; j < faces.size(); j++)
-        for (int k = 0; k < faces.size(); k++) {
+      for (int j = 0; j < m_faces.size(); j++)
+        for (int k = 0; k < m_faces.size(); k++) {
           if (i == j && i == k && j == k)
             continue;
 
-          if (faces[i] == nullptr || faces[j] == nullptr || faces[k] == nullptr) {
+          if (m_faces[i] == nullptr || m_faces[j] == nullptr || m_faces[k] == nullptr) {
             continue;
           }
-          auto kv = faceTypes.find(faces[k]->textureID);
+          auto kv = faceTypes.find(m_faces[k]->m_textureID);
           if (kv != faceTypes.end()) {
-            faces[k]->type = kv->second;
-            if (faces[k]->type == MapSurface::CLIP) {
-              isBlockVolume = true;
+            m_faces[k]->m_type = kv->second;
+            if (m_faces[k]->m_type == MapSurface::CLIP) {
+              m_isBlockVolume = true;
             }
           }
 
-          auto res = intersectPlanes(faces[i], faces[j], faces[k]);
-          if (!res.first || !isLegalVertex(res.second, faces)) {
+          auto res = intersectPlanes(m_faces[i], m_faces[j], m_faces[k]);
+          if (!res.first || !isLegalVertex(res.second, m_faces)) {
             continue;
           }
 
           res.second = mergeDuplicate(i, res.second);
 
           auto v = res.second;
-          v.normal = faces[i]->planeNormal;
+          v.normal = m_faces[i]->m_planeNormal;
           v.normal = normalize(v.normal);
-          v.tangent = faces[k]->CalcTangent();
+          v.tangent = m_faces[k]->CalcTangent();
 
-          auto tb = texBounds.find(faces[k]->textureID);
+          auto tb = texBounds.find(m_faces[k]->m_textureID);
           if (tb != texBounds.end() && (tb->second.width > 0 && tb->second.height > 0)) {
-            v.uv = faces[k]->CalcUV(v.point, tb->second.width, tb->second.height);
+            v.uv = m_faces[k]->CalcUV(v.point, tb->second.width, tb->second.height);
           }
 
-          if (v.inList(faces[k]->m_vertices))
+          if (v.inList(m_faces[k]->m_vertices))
             continue;
-          faces[k]->m_vertices.push_back(v);
+          m_faces[k]->m_vertices.push_back(v);
         }
 
-      faces[i]->UpdateAB();
+      m_faces[i]->UpdateAB();
     }
   }
 
   bool Brush::isLegalVertex(const Vertex &v, const std::vector<FacePtr> &faces) {
     for (const auto &f : faces) {
-      auto proj = tue::math::dot(f->planeNormal, v.point);
-      if (proj > f->planeDist && fabs(f->planeDist - proj) > 0.0008) {
+      auto proj = tue::math::dot(f->m_planeNormal, v.point);
+      if (proj > f->m_planeDist && fabs(f->m_planeDist - proj) > 0.0008) {
         return false;
       }
     }
@@ -246,13 +247,13 @@ namespace quakelib::map {
   }
 
   void Brush::calculateAABB() {
-    if (faces[0]->m_vertices.size() == 0)
+    if (m_faces[0]->m_vertices.size() == 0)
       return;
 
-    min = faces[0]->m_vertices[0].point;
-    max = faces[0]->m_vertices[0].point;
+    min = m_faces[0]->m_vertices[0].point;
+    max = m_faces[0]->m_vertices[0].point;
 
-    for (const auto &face : faces)
+    for (const auto &face : m_faces)
       for (const auto &vert : face->m_vertices) {
         if (vert.point[0] < min[0])
           min[0] = vert.point[0];

@@ -4,26 +4,26 @@ namespace quakelib::map {
 
   void SolidMapEntity::generateMesh(const std::map<int, MapSurface::eFaceType> &faceTypes,
                                     const std::map<int, textureBounds> &texBounds) {
-    if (!brushes.empty()) {
-      min = brushes[0].min;
-      max = brushes[0].max;
+    if (!m_brushes.empty()) {
+      m_min = m_brushes[0].min;
+      m_max = m_brushes[0].max;
     }
-    for (auto &b : brushes) {
+    for (auto &b : m_brushes) {
       b.buildGeometry(faceTypes, texBounds);
-      b.GetBiggerBBox(min, max);
+      b.GetBiggerBBox(m_min, m_max);
     }
-    center = CalculateCenterFromBBox(min, max);
+    m_center = CalculateCenterFromBBox(m_min, m_max);
   }
 
   void SolidMapEntity::csgUnion() {
-    if (!brushes.empty()) {
-      min = brushes[0].min;
-      max = brushes[0].max;
+    if (!m_brushes.empty()) {
+      m_min = m_brushes[0].min;
+      m_max = m_brushes[0].max;
     }
-    for (auto &b1 : brushes) {
+    for (auto &b1 : m_brushes) {
       auto cpBrush = b1;
-      for (auto &b2 : brushes) {
-        if (&b1 == &b2 || b2.faces.empty()) {
+      for (auto &b2 : m_brushes) {
+        if (&b1 == &b2 || b2.m_faces.empty()) {
           continue;
         }
 
@@ -32,17 +32,17 @@ namespace quakelib::map {
         }
 
         auto clippedFaces = cpBrush.clipToBrush(b2);
-        cpBrush.faces = clippedFaces;
+        cpBrush.m_faces = clippedFaces;
       }
-      if (!cpBrush.faces.empty()) {
-        clippedBrushes.push_back(cpBrush);
-        cpBrush.GetBiggerBBox(min, max);
-        stats_clippedFaces += b1.faces.size() - cpBrush.faces.size();
+      if (!cpBrush.m_faces.empty()) {
+        m_clippedBrushes.push_back(cpBrush);
+        cpBrush.GetBiggerBBox(m_min, m_max);
+        m_stats_clippedFaces += b1.m_faces.size() - cpBrush.m_faces.size();
       }
     }
-    center = CalculateCenterFromBBox(min, max);
-    if (brushes.size() > 0 && clippedBrushes.size() > 0) {
-      wasClipped = true;
+    m_center = CalculateCenterFromBBox(m_min, m_max);
+    if (m_brushes.size() > 0 && m_clippedBrushes.size() > 0) {
+      m_wasClipped = true;
     }
   }
 } // namespace quakelib::map

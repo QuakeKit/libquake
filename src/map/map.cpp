@@ -4,30 +4,30 @@
 
 namespace quakelib::map {
   void QMap::LoadBuffer(const char *buffer, getTextureBoundsCb getTextureBounds) {
-    map_file = std::make_shared<QMapFile>();
-    map_file->Parse(buffer);
+    m_map_file = std::make_shared<QMapFile>();
+    m_map_file->Parse(buffer);
     if (getTextureBounds != nullptr) {
-      for (int i = 0; i < map_file->textures.size(); i++) {
-        textureIDBounds[i] = getTextureBounds(map_file->textures[i].c_str());
+      for (int i = 0; i < m_map_file->m_textures.size(); i++) {
+        m_textureIDBounds[i] = getTextureBounds(m_map_file->m_textures[i].c_str());
       }
     }
     GenerateGeometry(true);
   }
 
   void QMap::LoadFile(const std::string &filename, getTextureBoundsCb getTextureBounds) {
-    map_file = std::make_shared<QMapFile>();
-    map_file->Parse(filename);
+    m_map_file = std::make_shared<QMapFile>();
+    m_map_file->Parse(filename);
     if (getTextureBounds != nullptr) {
-      for (int i = 0; i < map_file->textures.size(); i++) {
-        textureIDBounds[i] = getTextureBounds(map_file->textures[i].c_str());
+      for (int i = 0; i < m_map_file->m_textures.size(); i++) {
+        m_textureIDBounds[i] = getTextureBounds(m_map_file->m_textures[i].c_str());
       }
     }
     GenerateGeometry(true);
   }
 
   void QMap::GenerateGeometry(bool clipBrushes) {
-    for (const auto &se : map_file->solidEntities) {
-      se->generateMesh(textureIDTypes, textureIDBounds);
+    for (const auto &se : m_map_file->m_solidEntities) {
+      se->generateMesh(m_textureIDTypes, m_textureIDBounds);
       if (clipBrushes) {
         se->csgUnion();
       }
@@ -35,12 +35,12 @@ namespace quakelib::map {
   }
 
   void QMap::SetFaceTypeByTextureID(const std::string &texture, MapSurface::eFaceType type) {
-    if (map_file == nullptr)
+    if (m_map_file == nullptr)
       return;
 
-    for (int i = 0; i < map_file->textures.size(); i++) {
-      if (map_file->textures[i].find(texture) != std::string::npos) {
-        this->textureIDTypes[i] = type;
+    for (int i = 0; i < m_map_file->m_textures.size(); i++) {
+      if (m_map_file->m_textures[i].find(texture) != std::string::npos) {
+        this->m_textureIDTypes[i] = type;
         return;
       }
     }
@@ -48,7 +48,7 @@ namespace quakelib::map {
 
   std::vector<PointEntityPtr> QMap::PointEntitiesByClass(const std::string &className) {
     std::vector<PointEntityPtr> ents;
-    for (auto pe : map_file->pointEntities) {
+    for (auto pe : m_map_file->m_pointEntities) {
       if (pe->ClassContains(className)) {
         ents.push_back(pe);
       }
@@ -57,21 +57,21 @@ namespace quakelib::map {
   }
 
   const std::string &QMap::TextureName(int textureID) {
-    if (map_file == nullptr || textureID < 0 || textureID >= map_file->textures.size()) {
+    if (m_map_file == nullptr || textureID < 0 || textureID >= m_map_file->m_textures.size()) {
       static std::string empty = "";
       return empty;
     }
-    return map_file->textures[textureID];
+    return m_map_file->m_textures[textureID];
   }
 
   bool QMap::getPolygonsByTextureID(int entityID, int texID, std::vector<FacePtr> &list) {
-    if (map_file->solidEntities.size() >= entityID || entityID < 0) {
+    if (m_map_file->m_solidEntities.size() >= entityID || entityID < 0) {
       return false;
     }
 
-    for (auto &b : map_file->solidEntities[entityID].get()->brushes) {
+    for (auto &b : m_map_file->m_solidEntities[entityID].get()->m_brushes) {
       for (auto &p : b.Faces()) {
-        if (p->textureID == texID) {
+        if (p->TextureID() == texID) {
           list.push_back(p);
         }
       }
@@ -81,8 +81,8 @@ namespace quakelib::map {
 
   std::vector<FacePtr> QMap::PolygonsByTexture(int entityID, const std::string &findName) {
     int id = -1;
-    for (int i = 0; i < map_file->textures.size(); i++) {
-      if (map_file->textures[i] == findName) {
+    for (int i = 0; i < m_map_file->m_textures.size(); i++) {
+      if (m_map_file->m_textures[i] == findName) {
         id = i;
         break;
       }
@@ -97,11 +97,11 @@ namespace quakelib::map {
   }
 
   void QMap::GatherPolygons(int entityID, const polygonGatherCb &cb) {
-    if (map_file->solidEntities.size() >= entityID || entityID < 0) {
+    if (m_map_file->m_solidEntities.size() >= entityID || entityID < 0) {
       return;
     }
 
-    for (int i = 0; i < map_file->textures.size(); i++) {
+    for (int i = 0; i < m_map_file->m_textures.size(); i++) {
       std::vector<FacePtr> polyList;
       if (getPolygonsByTextureID(entityID, i, polyList)) {
         cb(polyList, i);

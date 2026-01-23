@@ -5,22 +5,22 @@ namespace quakelib::map {
   static constexpr double CMP_EPSILON_DISTANCE = 0.001;
 
   void MapSurface::initPlane() {
-    fvec3 v0v1 = planePoints[1] - planePoints[0];
-    fvec3 v1v2 = planePoints[2] - planePoints[1];
-    planeNormal = normalize(cross(v1v2, v0v1));
-    planeDist = dot(planeNormal, planePoints[0]);
+    fvec3 v0v1 = m_planePoints[1] - m_planePoints[0];
+    fvec3 v1v2 = m_planePoints[2] - m_planePoints[1];
+    m_planeNormal = normalize(cross(v1v2, v0v1));
+    m_planeDist = dot(m_planeNormal, m_planePoints[0]);
   }
 
   FacePtr MapSurface::Copy() const {
     auto newp = std::make_shared<MapSurface>();
     newp->m_vertices = m_vertices;
     newp->m_indices = m_indices;
-    newp->planeNormal = planeNormal;
-    newp->planeDist = planeDist;
-    newp->valveUV = valveUV;
-    newp->scaleY = scaleY;
-    newp->scaleX = scaleY;
-    newp->hasValveUV = hasValveUV;
+    newp->m_planeNormal = m_planeNormal;
+    newp->m_planeDist = m_planeDist;
+    newp->m_valveUV = m_valveUV;
+    newp->m_scaleY = m_scaleY;
+    newp->m_scaleX = m_scaleX;
+    newp->m_hasValveUV = m_hasValveUV;
     newp->min = min;
     newp->max = max;
     return newp;
@@ -46,7 +46,7 @@ namespace quakelib::map {
   MapSurface::eFaceClassification MapSurface::Classify(const MapSurface *other) {
     bool bFront = false, bBack = false;
     for (int i = 0; i < (int)other->m_vertices.size(); i++) {
-      double dist = dot(planeNormal, other->m_vertices[i].point) - planeDist;
+      double dist = dot(m_planeNormal, other->m_vertices[i].point) - m_planeDist;
       if (dist > CMP_EPSILON_DISTANCE) {
         if (bBack) {
           return eFaceClassification::SPANNING;
@@ -76,13 +76,13 @@ namespace quakelib::map {
     fvec3 dir = normalize(end - start);
     float num, denom;
 
-    denom = dot(planeNormal, dir);
+    denom = dot(m_planeNormal, dir);
 
     if (fabs(denom) < epsilon) {
       return false;
     }
 
-    float dist = tue::math::dot(planeNormal, start) - planeDist;
+    float dist = tue::math::dot(m_planeNormal, start) - m_planeDist;
 
     num = -dist;
     out_percentage = num / denom;
@@ -92,7 +92,7 @@ namespace quakelib::map {
   }
 
   MapSurface::eFaceClassification MapSurface::ClassifyPoint(const fvec3 &v) {
-    double dist = tue::math::dot(planeNormal, v) - planeDist;
+    double dist = tue::math::dot(m_planeNormal, v) - m_planeDist;
     if (dist > epsilon) {
       return MapSurface::eFaceClassification::FRONT;
     }
@@ -131,8 +131,8 @@ namespace quakelib::map {
   }
 
   bool MapSurface::operator==(const MapSurface &other) const {
-    if (m_vertices.size() != other.m_vertices.size() || planeDist != other.planeDist ||
-        planeNormal != other.planeNormal)
+    if (m_vertices.size() != other.m_vertices.size() || m_planeDist != other.m_planeDist ||
+        m_planeNormal != other.m_planeNormal)
       return false;
 
     for (int i = 0; i < m_vertices.size(); i++) {
@@ -146,16 +146,16 @@ namespace quakelib::map {
         return false;
     }
 
-    if (textureID == other.textureID)
+    if (m_textureID == other.m_textureID)
       return true;
 
     return true;
   }
 
   fvec4 MapSurface::calcStandardTangent() {
-    float du = dot(planeNormal, UP_VEC);
-    float dr = dot(planeNormal, RIGHT_VEC);
-    float df = dot(planeNormal, FORWARD_VEC);
+    float du = dot(m_planeNormal, UP_VEC);
+    float dr = dot(m_planeNormal, RIGHT_VEC);
+    float df = dot(m_planeNormal, FORWARD_VEC);
     float dua = fabs(du);
     float dra = fabs(dr);
     float dfa = fabs(df);
@@ -174,24 +174,24 @@ namespace quakelib::map {
       vSign = copysignf(1.0, df);
     }
 
-    vSign *= copysignf(1.0, scaleY);
-    uAxis = tue::transform::rotation_vec(uAxis, (float)((-rotation * vSign) * (180.0 / M_PI)));
+    vSign *= copysignf(1.0, m_scaleY);
+    uAxis = tue::transform::rotation_vec(uAxis, (float)((-m_rotation * vSign) * (180.0 / M_PI)));
     return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
   }
 
   fvec4 MapSurface::calcValveTangent() {
-    fvec3 uAxis = normalize(valveUV.u.xyz());
-    fvec3 vAxis = normalize(valveUV.v.xyz());
-    float vSign = copysignf(1.0, dot(cross((fvec3)planeNormal, uAxis), vAxis));
+    fvec3 uAxis = normalize(m_valveUV.u.xyz());
+    fvec3 vAxis = normalize(m_valveUV.v.xyz());
+    float vSign = copysignf(1.0, dot(cross((fvec3)m_planeNormal, uAxis), vAxis));
     return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
   }
 
   fvec2 MapSurface::calcStandardUV(fvec3 vertex, float texW, float texH) {
     fvec2 uvOut{0};
 
-    float du = fabs(dot(planeNormal, UP_VEC));
-    float dr = fabs(dot(planeNormal, RIGHT_VEC));
-    float df = fabs(dot(planeNormal, FORWARD_VEC));
+    float du = fabs(dot(m_planeNormal, UP_VEC));
+    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
+    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
 
     if (du >= dr && du >= df)
       uvOut = fvec2(vertex[0], -vertex[1]);
@@ -200,27 +200,27 @@ namespace quakelib::map {
     else if (df >= du && df >= dr)
       uvOut = fvec2(vertex[1], -vertex[2]);
 
-    float angle = (float)(rotation * (M_PI / 180));
+    float angle = (float)(m_rotation * (M_PI / 180));
     uvOut =
         fvec2(uvOut[0] * cos(angle) - uvOut[1] * sin(angle), uvOut[0] * sin(angle) + uvOut[1] * cos(angle));
 
     uvOut[0] /= texW;
     uvOut[1] /= texH;
 
-    uvOut[0] /= scaleX;
-    uvOut[1] /= scaleY;
+    uvOut[0] /= m_scaleX;
+    uvOut[1] /= m_scaleY;
 
-    uvOut[0] += standardUV.u / texW;
-    uvOut[1] += standardUV.v / texH;
+    uvOut[0] += m_standardUV.u / texW;
+    uvOut[1] += m_standardUV.v / texH;
     return uvOut;
   }
 
   fvec2 MapSurface::calcValveUV(fvec3 vertex, float texW, float texH) {
     fvec2 uvOut{0};
-    fvec3 uAxis = valveUV.u.xyz();
-    fvec3 vAxis = valveUV.v.xyz();
-    float uShift = valveUV.u[3];
-    float vShift = valveUV.v[3];
+    fvec3 uAxis = m_valveUV.u.xyz();
+    fvec3 vAxis = m_valveUV.v.xyz();
+    float uShift = m_valveUV.u[3];
+    float vShift = m_valveUV.v[3];
 
     uvOut[0] = dot(uAxis, vertex);
     uvOut[1] = dot(vAxis, vertex);
@@ -228,8 +228,8 @@ namespace quakelib::map {
     uvOut[0] /= texW;
     uvOut[1] /= texH;
 
-    uvOut[0] /= scaleX;
-    uvOut[1] /= scaleY;
+    uvOut[0] /= m_scaleX;
+    uvOut[1] /= m_scaleY;
 
     uvOut[0] += uShift / texW;
     uvOut[1] += vShift / texH;

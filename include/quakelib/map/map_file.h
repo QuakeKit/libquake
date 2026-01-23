@@ -14,15 +14,15 @@ namespace quakelib::map {
 
   class QMapFile {
   public:
-    QMapFile() { worldSpawn = nullptr; };
+    QMapFile() { m_worldSpawn = nullptr; };
 
     void Parse(const std::string &filename);
     void Parse(const char *buffer);
     void Parse(std::istream &strstr);
 
-    const std::string &VersionString() { return mapVersionStr; };
+    const std::string &VersionString() { return m_mapVersionStr; };
 
-    int Version() { return mapVersion; };
+    int Version() { return m_mapVersion; };
 
   private:
     void parse_entity_attributes(std::string l, Entity *ent);
@@ -32,13 +32,13 @@ namespace quakelib::map {
   private:
     size_t getOrAddTexture(const std::string &texture);
 
-    int mapVersion = STANDARD_VERSION;
-    std::string mapVersionStr = "100";
-    SolidMapEntity *worldSpawn;
-    std::vector<SolidEntityPtr> solidEntities;
-    std::vector<PointEntityPtr> pointEntities;
-    std::vector<std::string> textures;
-    std::vector<std::string> wads;
+    int m_mapVersion = STANDARD_VERSION;
+    std::string m_mapVersionStr = "100";
+    SolidMapEntity *m_worldSpawn;
+    std::vector<SolidEntityPtr> m_solidEntities;
+    std::vector<PointEntityPtr> m_pointEntities;
+    std::vector<std::string> m_textures;
+    std::vector<std::string> m_wads;
     friend class QMap;
   };
 } // namespace quakelib::map

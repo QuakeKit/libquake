@@ -6,11 +6,11 @@
 
 namespace quakelib::wad {
   const color Palette::GetColor(int index) const {
-    if (index < 0 || index >= colors.size()) {
+    if (index < 0 || index >= m_colors.size()) {
       throw std::runtime_error("color index out of range");
     }
 
-    return colors[index];
+    return m_colors[index];
   }
 
 } // namespace quakelib::wad

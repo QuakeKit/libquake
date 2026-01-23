@@ -71,19 +71,19 @@ namespace quakelib::wad {
     ~QuakeWad();
     QuakeTexture *GetTexture(const std::string &textureName);
 
-    const std::map<std::string, QuakeWadEntry> &Textures() { return entries; };
+    const std::map<std::string, QuakeWadEntry> &Textures() { return m_entries; };
 
-    void SetPalette(const Palette &p) { this->pal = p; };
+    void SetPalette(const Palette &p) { this->m_pal = p; };
 
-    const Palette &GetPalette() { return pal; };
+    const Palette &GetPalette() { return m_pal; };
 
     static bool IsSkyTexture(const std::string texname);
 
   private:
-    unsigned int numEntries;
-    unsigned int dirOffset;
-    Palette pal = default_palette;
-    std::ifstream istream;
-    std::map<std::string, QuakeWadEntry> entries;
+    unsigned int m_numEntries;
+    unsigned int m_dirOffset;
+    Palette m_pal = default_palette;
+    std::ifstream m_istream;
+    std::map<std::string, QuakeWadEntry> m_entries;
   };
 } // namespace quakelib::wad

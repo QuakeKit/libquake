@@ -29,15 +29,15 @@ namespace quakelib::map {
 
     MapSurface(const std::array<fvec3, 3> &points, int textureID, StandardUV uv, float rotation, float scaleX,
                float scaleY)
-        : planePoints(points), standardUV(uv), textureID(textureID), rotation(rotation), scaleX(scaleX),
-          scaleY(scaleY) {
+        : m_planePoints(points), m_standardUV(uv), m_textureID(textureID), m_rotation(rotation),
+          m_scaleX(scaleX), m_scaleY(scaleY) {
       initPlane();
     };
 
     MapSurface(const std::array<fvec3, 3> &points, int textureID, ValveUV uv, float rotation, float scaleX,
                float scaleY)
-        : planePoints(points), valveUV(uv), textureID(textureID), rotation(rotation), scaleX(scaleX),
-          scaleY(scaleY), hasValveUV(true) {
+        : m_planePoints(points), m_valveUV(uv), m_textureID(textureID), m_rotation(rotation),
+          m_scaleX(scaleX), m_scaleY(scaleY), m_hasValveUV(true) {
       initPlane();
     };
 
@@ -47,22 +47,22 @@ namespace quakelib::map {
     void UpdateNormals();
     [[nodiscard]] FacePtr Copy() const;
 
-    [[nodiscard]] int TextureID() const { return textureID; };
+    [[nodiscard]] int TextureID() const { return m_textureID; };
 
-    const fvec3 &GetPlaneNormal() const { return planeNormal; }
+    const fvec3 &GetPlaneNormal() const { return m_planeNormal; }
 
-    const float &GetPlaneDist() const { return planeDist; }
+    const float &GetPlaneDist() const { return m_planeDist; }
 
-    eFaceType Type() const { return type; }
+    eFaceType Type() const { return m_type; }
 
     fvec3 center{}, min{}, max{};
     bool operator==(const MapSurface &arg_) const;
 
   private:
-    fvec4 CalcTangent() { return hasValveUV ? calcValveTangent() : calcStandardTangent(); };
+    fvec4 CalcTangent() { return m_hasValveUV ? calcValveTangent() : calcStandardTangent(); };
 
     fvec2 CalcUV(fvec3 vertex, float texW, float texH) {
-      return hasValveUV ? calcValveUV(vertex, texW, texH) : calcStandardUV(vertex, texW, texH);
+      return m_hasValveUV ? calcValveUV(vertex, texW, texH) : calcStandardUV(vertex, texW, texH);
     };
 
     void initPlane();
@@ -74,17 +74,17 @@ namespace quakelib::map {
                          float &out_percentage);
     std::pair<FacePtr, FacePtr> splitFace(const MapSurface *other);
 
-    std::array<fvec3, 3> planePoints{};
-    fvec3 planeNormal{};
-    float planeDist{};
-    StandardUV standardUV{};
-    ValveUV valveUV{};
-    int textureID{};
-    float rotation{};
-    float scaleX{};
-    float scaleY{};
-    eFaceType type = SOLID;
-    bool hasValveUV{};
+    std::array<fvec3, 3> m_planePoints{};
+    fvec3 m_planeNormal{};
+    float m_planeDist{};
+    StandardUV m_standardUV{};
+    ValveUV m_valveUV{};
+    int m_textureID{};
+    float m_rotation{};
+    float m_scaleX{};
+    float m_scaleY{};
+    eFaceType m_type = SOLID;
+    bool m_hasValveUV{};
 
     friend class Brush;
     friend class QMap;

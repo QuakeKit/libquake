@@ -18,15 +18,15 @@ namespace quakelib::map {
                        const std::map<int, textureBounds> &texBounds);
     void GetBiggerBBox(fvec3 &min, fvec3 &max);
 
-    bool IsBlockVolume() const { return isBlockVolume; }
+    bool IsBlockVolume() const { return m_isBlockVolume; }
 
-    [[nodiscard]] inline const std::vector<FacePtr> &Faces() const { return faces; }
+    [[nodiscard]] inline const std::vector<FacePtr> &Faces() const { return m_faces; }
 
     fvec3 min{};
     fvec3 max{};
 
   private:
-    std::vector<FacePtr> faces;
+    std::vector<FacePtr> m_faces;
 
     void generatePolygons(const std::map<int, MapSurface::eFaceType> &faceTypes,
                           const std::map<int, textureBounds> &texBounds);
@@ -39,7 +39,7 @@ namespace quakelib::map {
     static bool isLegalVertex(const Vertex &v, const std::vector<FacePtr> &faces);
     FacePtr clipToList(FaceIter first, const FaceIter &firstEnd, FaceIter second, const FaceIter &secondEnd);
 
-    bool isBlockVolume = false;
+    bool m_isBlockVolume = false;
 
     friend class QMapFile;
     friend class SolidMapEntity;

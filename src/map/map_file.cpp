@@ -43,16 +43,16 @@ namespace quakelib::map {
       case EntityType::POINT: {
         auto ent = std::make_shared<PointEntity>();
         ent->FillFromParsed(pe);
-        this->pointEntities.push_back(ent);
+        this->m_pointEntities.push_back(ent);
         break;
       }
       case EntityType::SOLID:
       case EntityType::WORLDSPAWN: {
         auto sent = new SolidMapEntity();
         sent->FillFromParsed(pe);
-        this->solidEntities.push_back(SolidEntityPtr(sent));
+        this->m_solidEntities.push_back(SolidEntityPtr(sent));
         if (pe->type == EntityType::WORLDSPAWN) {
-          this->worldSpawn = sent;
+          this->m_worldSpawn = sent;
         }
         for (auto &child : pe->children) {
           std::stringstream lines;
@@ -88,7 +88,7 @@ namespace quakelib::map {
 
       ValveUV valveUV{};
       StandardUV standardUV{};
-      switch (mapVersion) {
+      switch (m_mapVersion) {
       case VALVE_VERSION:
         l >> valveUV.u[0] >> valveUV.u[1] >> valveUV.u[2] >> valveUV.u[3];
         l >> valveUV.v[0] >> valveUV.v[1] >> valveUV.v[2] >> valveUV.v[3];
@@ -101,24 +101,24 @@ namespace quakelib::map {
       float rotation{}, scaleX{}, scaleY{};
       l >> rotation >> scaleX >> scaleY;
 
-      auto face = mapVersion == STANDARD_VERSION
+      auto face = m_mapVersion == STANDARD_VERSION
                       ? std::make_shared<MapSurface>(facePoints, getOrAddTexture(texture), standardUV,
                                                      rotation, scaleX, scaleY)
                       : std::make_shared<MapSurface>(facePoints, getOrAddTexture(texture), valveUV, rotation,
                                                      scaleX, scaleY);
 
-      brush.faces.push_back(face);
+      brush.m_faces.push_back(face);
     }
-    ent->brushes.push_back(brush);
+    ent->m_brushes.push_back(brush);
   }
 
   size_t QMapFile::getOrAddTexture(const std::string &texture) {
-    for (int i = 0; i < textures.size(); i++) {
-      if (textures[i] == texture)
+    for (int i = 0; i < m_textures.size(); i++) {
+      if (m_textures[i] == texture)
         return i;
     }
-    textures.push_back(texture);
-    size_t ret = textures.size() - 1;
+    m_textures.push_back(texture);
+    size_t ret = m_textures.size() - 1;
     return ret;
   }
 } // namespace quakelib::map

@@ -26,13 +26,15 @@ namespace quakelib::map {
     void GenerateGeometry(bool clipBrushes = true);
     void GatherPolygons(int entityID, const polygonGatherCb &);
 
-    std::vector<FacePtr> GetPolygonsByTexture(int entityID, const std::string &texName);
+    std::vector<FacePtr> PolygonsByTexture(int entityID, const std::string &texName);
 
     const std::vector<std::string> &Wads() { return map_file->wads; };
 
     bool HasWads() { return !map_file->wads.empty(); };
 
-    const std::vector<std::string> &GetTexturesNames() { return map_file->textures; };
+    const std::vector<std::string> &TextureNames() { return map_file->textures; };
+
+    const std::string &TextureName(int textureID);
 
     QMapFile *MapData() { return map_file.get(); };
 
@@ -40,11 +42,11 @@ namespace quakelib::map {
 
     const SolidMapEntity *WorldSpawn() { return map_file->worldSpawn; }
 
-    const std::vector<SolidEntityPtr> &GetSolidEntities() { return map_file->solidEntities; };
+    const std::vector<SolidEntityPtr> &SolidEntities() { return map_file->solidEntities; };
 
-    const std::vector<PointEntityPtr> &GetPointEntities() { return map_file->pointEntities; };
+    const std::vector<PointEntityPtr> &PointEntities() { return map_file->pointEntities; };
 
-    std::vector<PointEntityPtr> GetPointEntitiesByClass(const std::string &className);
+    std::vector<PointEntityPtr> PointEntitiesByClass(const std::string &className);
 
   private:
     bool getPolygonsByTextureID(int entityID, int texID, std::vector<FacePtr> &list);

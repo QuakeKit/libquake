@@ -40,10 +40,30 @@ namespace quakelib::map {
   void QMapFile::Parse(std::istream &stream) {
     EntityParser::ParseEntites(stream, [&](ParsedEntity *pe) {
       switch (pe->type) {
-      case EntityType::POINT:
+      case EntityType::POINT: {
         auto ent = std::make_shared<PointEntity>();
         ent->FillFromParsed(pe);
         this->pointEntities.push_back(ent);
+        break;
+      }
+      case EntityType::SOLID:
+      case EntityType::WORLDSPAWN: {
+        auto sent = new SolidMapEntity();
+        sent->FillFromParsed(pe);
+        this->solidEntities.push_back(SolidEntityPtr(sent));
+        if (pe->type == EntityType::WORLDSPAWN) {
+          this->worldSpawn = sent;
+        }
+        for (auto &child : pe->children) {
+          std::stringstream lines;
+          for (std::string line; std::getline(child->lines, line);) {
+            lines << line << std::endl;
+          }
+          parse_entity_planes(lines, sent);
+        }
+        break;
+      }
+      default:
         break;
       }
     });

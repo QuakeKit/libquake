@@ -52,5 +52,5 @@ TEST_CASE("parse map", "[map/parsing]") {
     // we don't check texture name catching yet
     return map::textureBounds{0, 0};
   });
-  REQUIRE(m->GetPointEntities().size() == POINT_COUNT);
+  REQUIRE(m->PointEntities().size() == POINT_COUNT);
 }

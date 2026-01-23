@@ -20,7 +20,7 @@ namespace quakelib::map {
 
     bool IsBlockVolume() const { return isBlockVolume; }
 
-    [[nodiscard]] inline const std::vector<FacePtr> &GetFaces() const { return faces; }
+    [[nodiscard]] inline const std::vector<FacePtr> &Faces() const { return faces; }
 
     fvec3 min{};
     fvec3 max{};

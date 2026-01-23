@@ -15,8 +15,8 @@ API_EXPORT QMap *LoadMap(const char *mapFile, textureBounds(getTextureBounds)(co
 API_EXPORT void GenerateGeometry(QMap *ptr, int *outPointEntCount, int *outSolidEntCount,
                                  bool clipBrushes = true) {
   ptr->GenerateGeometry(clipBrushes);
-  *outSolidEntCount = (int)ptr->GetSolidEntities().size();
-  *outPointEntCount = (int)ptr->GetPointEntities().size();
+  *outSolidEntCount = (int)ptr->SolidEntities().size();
+  *outPointEntCount = (int)ptr->PointEntities().size();
 }
 
 API_EXPORT void SetFaceType(QMap *ptr, const char *textureName, uint8_t faceType) {
@@ -24,7 +24,7 @@ API_EXPORT void SetFaceType(QMap *ptr, const char *textureName, uint8_t faceType
 }
 
 API_EXPORT void GetTextures(QMap *ptr, void(add)(const char *tex)) {
-  for (auto texName : ptr->GetTexturesNames()) {
+  for (auto texName : ptr->TextureNames()) {
     add(texName.c_str());
   }
 }
@@ -35,10 +35,10 @@ API_EXPORT void GetEntityAttributes(QMap *ptr, uint8_t type, int idx, Entity **e
     return;
   }
 
-  if (type == 0 && ptr->GetSolidEntities().size() > idx) {
-    *entOut = ptr->GetSolidEntities()[idx].get();
-  } else if (type == 1 && ptr->GetPointEntities().size() > idx) {
-    *entOut = ptr->GetPointEntities()[idx].get();
+  if (type == 0 && ptr->SolidEntities().size() > idx) {
+    *entOut = ptr->SolidEntities()[idx].get();
+  } else if (type == 1 && ptr->PointEntities().size() > idx) {
+    *entOut = ptr->PointEntities()[idx].get();
   }
 
   if ((*entOut) == nullptr) {
@@ -84,7 +84,7 @@ API_EXPORT void GetBrushFaces(SolidMapEntity *ent, int brushIdx,
     return;
   }
   const auto &brush = ent->GetClippedBrushes()[brushIdx];
-  const auto nativeFaces = brush.GetFaces();
+  const auto nativeFaces = brush.Faces();
 
   for (int i = 0; i < nativeFaces.size(); i++) {
     add(i, nativeFaces[i]->TextureID(), nativeFaces[i]->Type());
@@ -97,7 +97,7 @@ API_EXPORT void GetFaceData(SolidMapEntity *ent, int brushIdx, int faceIdx, vert
     return;
   }
   const auto &brush = ent->GetClippedBrushes()[brushIdx];
-  const auto &face = brush.GetFaces()[faceIdx];
+  const auto &face = brush.Faces()[faceIdx];
 
   *vertCount = (int)face->Vertices().size();
   *indexCount = (int)face->Indices().size();

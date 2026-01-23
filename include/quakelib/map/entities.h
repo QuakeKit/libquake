@@ -15,7 +15,7 @@ namespace quakelib::map {
   public:
     const std::vector<Brush> &GetOriginalBrushes() { return brushes; }
 
-    const std::vector<Brush> &GetBrushes() {
+    const std::vector<Brush> &Brushes() {
       if (wasClipped) {
         return clippedBrushes;
       }

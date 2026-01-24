@@ -7,15 +7,15 @@ using std::cout, std::endl;
 using namespace quakelib;
 
 void banner() {
-  cout << "QFORMAT test app\n"
+  cout << "QVIEWER\n"
        << "----------------" << endl;
 }
 
 int main(int argc, char *argv[]) {
   banner();
 
-  std::string mapPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/maps/orig/START.MAP";
-  std::string wadPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/wads/";
+  std::string mapPath = "";
+  std::string wadPath = "";
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];

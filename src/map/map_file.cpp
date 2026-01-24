@@ -53,6 +53,7 @@ namespace quakelib::map {
         this->m_solidEntities.push_back(SolidEntityPtr(sent));
         if (pe->type == EntityType::WORLDSPAWN) {
           this->m_worldSpawn = sent;
+          parse_wad_string(sent->AttributeStr("wad"));
         }
         for (auto &child : pe->children) {
           std::stringstream lines;
@@ -121,4 +122,19 @@ namespace quakelib::map {
     size_t ret = m_textures.size() - 1;
     return ret;
   }
-} // namespace quakelib::map
+
+  void QMapFile::parse_wad_string(const std::string &wads) {
+    std::istringstream ss(wads);
+    for (std::string item; std::getline(ss, item, ';');) {
+      if (item.empty())
+        continue;
+      auto pos = item.find_last_of("/\\");
+      if (pos != std::string::npos) {
+        m_wads.push_back(item.substr(pos + 1));
+      } else {
+        m_wads.push_back(item);
+      }
+    }
+  }
+
+}

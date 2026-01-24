@@ -58,7 +58,8 @@ namespace quakelib::map {
       if (f->m_vertices.size() < 3)
         continue;
 
-      f->m_indices.resize((f->m_vertices.size() - 2) * 3);
+      f->m_indices.clear();
+      f->m_indices.reserve((f->m_vertices.size() - 2) * 3);
       for (int i = 0; i < f->m_vertices.size() - 2; i++) {
         f->m_indices.push_back(0);
         f->m_indices.push_back(i + 1);
@@ -106,58 +107,124 @@ namespace quakelib::map {
     }
   }
 
-  FacePtr Brush::clipToList(FaceIter first, const FaceIter &firstEnd, FaceIter second,
-                            const FaceIter &secondEnd) {
-    if (second->get()->Type() != MapSurface::SOLID) {
-      return *first;
-    }
-
-    auto ecp = second->get()->Classify(first->get());
-    switch (ecp) {
-    case MapSurface::FRONT: // poligon is outside of brush
-    {
-      return *first;
-    }
-    case MapSurface::BACK: {
-      if (second + 1 == secondEnd) {
-        return nullptr; // polygon is inside of brush
-      }
-      return clipToList(first, firstEnd, ++second, secondEnd);
-    }
-    case MapSurface::ON_PLANE: {
-      double angle = dot(first->get()->m_planeNormal, second->get()->m_planeNormal) - 1;
-      if ((angle < epsilon) && (angle > -epsilon)) {
-        return *first;
-      }
-
-      if (second + 1 == secondEnd) {
-        return nullptr; // polygon is inside of brush
-      }
-
-      return clipToList(first, firstEnd, ++second, secondEnd);
-    }
-    case MapSurface::SPANNING: {
-      // TODO: calculate split
-      return *first;
-    }
-    }
-    return *first;
+  static Vertex interpolate(const Vertex &v1, const Vertex &v2, float t) {
+    Vertex res;
+    res.point = v1.point + (v2.point - v1.point) * t;
+    res.uv = v1.uv + (v2.uv - v1.uv) * t;
+    res.normal = v1.normal;
+    res.tangent = v1.tangent;
+    res.lightmap_uv = v1.lightmap_uv + (v2.lightmap_uv - v1.lightmap_uv) * t;
+    return res;
   }
 
-  std::vector<FacePtr> Brush::clipToBrush(const Brush &other) {
-    auto otherFaces_iter = other.m_faces.begin();
-    auto faces_iter = m_faces.begin();
-    std::vector<FacePtr> clippedFaces;
-    while (faces_iter != m_faces.cend()) {
+  void Brush::splitFace(const FacePtr &in, const FacePtr &plane, FacePtr &front, FacePtr &back) {
+    if (!in || in->m_vertices.empty())
+      return;
 
-      auto clippedPoly = clipToList(faces_iter, m_faces.cend(), otherFaces_iter, other.m_faces.cend());
-      if (clippedPoly != nullptr) {
-        clippedFaces.push_back(clippedPoly);
-      }
+    std::vector<Vertex> fVerts, bVerts;
+    const auto &verts = in->m_vertices;
+    const auto &normal = plane->m_planeNormal;
+    const float dist = plane->m_planeDist;
 
-      ++faces_iter;
+    std::vector<float> dists;
+    dists.reserve(verts.size());
+
+    double split_epsilon = CMP_EPSILON;
+
+    for (const auto &v : verts) {
+      dists.push_back(dot(normal, v.point) - dist);
     }
 
+    for (size_t i = 0; i < verts.size(); ++i) {
+      const auto &v1 = verts[i];
+      float d1 = dists[i];
+
+      size_t next = (i + 1) % verts.size();
+      const auto &v2 = verts[next];
+      float d2 = dists[next];
+
+      if (d1 >= -split_epsilon)
+        fVerts.push_back(v1);
+      if (d1 <= split_epsilon)
+        bVerts.push_back(v1);
+
+      if ((d1 > split_epsilon && d2 < -split_epsilon) || (d1 < -split_epsilon && d2 > split_epsilon)) {
+        float t = d1 / (d1 - d2);
+        Vertex mid = interpolate(v1, v2, t);
+        fVerts.push_back(mid);
+        bVerts.push_back(mid);
+      }
+    }
+
+    if (fVerts.size() >= 3) {
+      front = in->Copy();
+      front->m_vertices = fVerts;
+      front->m_indices.clear();
+    } else
+      front = nullptr;
+
+    if (bVerts.size() >= 3) {
+      back = in->Copy();
+      back->m_vertices = bVerts;
+      back->m_indices.clear();
+    } else
+      back = nullptr;
+  }
+
+  void Brush::clipFace(FacePtr face, FaceIter plane, const FaceIter &planeEnd, std::vector<FacePtr> &outFaces,
+                       bool keepOnPlane, bool isCoplanar) {
+    if (face->Type() == MapSurface::CLIP || face->Type() == MapSurface::SKIP)
+      return;
+
+    if (plane == planeEnd) {
+      if (isCoplanar && keepOnPlane) {
+        outFaces.push_back(face);
+      }
+      return;
+    }
+
+    if ((*plane)->Type() != MapSurface::SOLID) {
+      clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, isCoplanar);
+      return;
+    }
+
+    auto ecp = (*plane)->Classify(face.get());
+    switch (ecp) {
+    case MapSurface::FRONT:
+      outFaces.push_back(face);
+      return;
+    case MapSurface::BACK:
+      clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, isCoplanar);
+      return;
+    case MapSurface::ON_PLANE: {
+      double angle = dot(face->m_planeNormal, (*plane)->m_planeNormal) - 1;
+      if ((angle < CMP_EPSILON) && (angle > -CMP_EPSILON)) {
+        clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, true);
+        return;
+      }
+      clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, isCoplanar);
+      return;
+    }
+    case MapSurface::SPANNING: {
+      FacePtr front = nullptr, back = nullptr;
+      splitFace(face, *plane, front, back);
+      if (front)
+        outFaces.push_back(front);
+      if (back)
+        clipFace(back, plane + 1, planeEnd, outFaces, keepOnPlane, isCoplanar);
+      return;
+    }
+    }
+  }
+
+  std::vector<FacePtr> Brush::clipToBrush(const Brush &other, bool keepOnPlane) {
+    std::vector<FacePtr> clippedFaces;
+    auto planes_begin = other.m_faces.begin();
+    auto planes_end = other.m_faces.cend();
+
+    for (auto &face : m_faces) {
+      clipFace(face, planes_begin, planes_end, clippedFaces, keepOnPlane);
+    }
     return clippedFaces;
   }
 
@@ -213,6 +280,8 @@ namespace quakelib::map {
           if (tb != texBounds.end() && (tb->second.width > 0 && tb->second.height > 0)) {
             v.uv = m_faces[k]->CalcUV(v.point, tb->second.width, tb->second.height);
           }
+
+          v.lightmap_uv = m_faces[k]->CalcLightmapUV(v.point);
 
           if (v.inList(m_faces[k]->m_vertices))
             continue;
@@ -274,4 +343,4 @@ namespace quakelib::map {
           max[2] = vert.point[2];
       }
   }
-} // namespace quakelib::map
+}

@@ -83,4 +83,4 @@ namespace quakelib::wad {
     qtex->FillTextureData(buff, width * height, opts.flipTexHorizontal, m_pal);
     return qtex;
   }
-} // namespace quakelib::wad
+}

@@ -31,18 +31,22 @@ namespace quakelib::map {
     const fvec3 &GetMax() const { return m_max; }
 
     // stats getter
-    size_t StatsClippedFaces() const { return m_stats_clippedFaces; }
+    long long StatsClippedFaces() const { return m_stats_clippedFaces; }
 
   private:
     void generateMesh(const std::map<int, MapSurface::eFaceType> &faceTypes,
                       const std::map<int, textureBounds> &texBounds);
     void csgUnion();
+    void weldVertices();
+    void fixTJunctions();
+    void removeCollinearVertices();
+    void triangulateFaces();
 
     std::vector<Brush> m_brushes;
     std::vector<Brush> m_clippedBrushes;
     bool m_hasPhongShading{};
     std::vector<int> m_textureIDs;
-    size_t m_stats_clippedFaces{};
+    long long m_stats_clippedFaces{};
     bool m_wasClipped = false;
 
     fvec3 m_center{0};

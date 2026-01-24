@@ -18,9 +18,14 @@ namespace quakelib::map {
     newp->m_planeNormal = m_planeNormal;
     newp->m_planeDist = m_planeDist;
     newp->m_valveUV = m_valveUV;
+    newp->m_standardUV = m_standardUV;
+    newp->m_textureID = m_textureID;
+    newp->m_rotation = m_rotation;
     newp->m_scaleY = m_scaleY;
     newp->m_scaleX = m_scaleX;
     newp->m_hasValveUV = m_hasValveUV;
+    newp->m_planePoints = m_planePoints;
+    newp->m_type = m_type;
     newp->min = min;
     newp->max = max;
     return newp;
@@ -28,7 +33,7 @@ namespace quakelib::map {
 
   void MapSurface::UpdateNormals() {
     for (int i = 0; i < m_indices.size(); i += 3) {
-      // get the three vertices that make the faces
+
       const auto &p1 = m_vertices[m_indices[i + 0]].point;
       const auto &p2 = m_vertices[m_indices[i + 1]].point;
       const auto &p3 = m_vertices[m_indices[i + 2]].point;
@@ -237,6 +242,82 @@ namespace quakelib::map {
     return uvOut;
   }
 
+  fvec2 MapSurface::calcStandardLightmapUV(fvec3 vertex) {
+    fvec2 uvOut{0};
+
+    float du = fabs(dot(m_planeNormal, UP_VEC));
+    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
+    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
+
+    if (du >= dr && du >= df)
+      uvOut = fvec2(vertex[0], -vertex[1]);
+    else if (dr >= du && dr >= df)
+      uvOut = fvec2(vertex[0], -vertex[2]);
+    else if (df >= du && df >= dr)
+      uvOut = fvec2(vertex[1], -vertex[2]);
+
+    return uvOut;
+  }
+
+  fvec2 MapSurface::calcValveLightmapUV(fvec3 vertex) {
+    fvec2 uvOut{0};
+    fvec3 uAxis = m_valveUV.u.xyz();
+    fvec3 vAxis = m_valveUV.v.xyz();
+
+    uvOut[0] = dot(uAxis, vertex);
+    uvOut[1] = dot(vAxis, vertex);
+
+    return uvOut;
+  }
+
+
+  static fvec3 SolvePlanes(const fvec3 &n, float d, const fvec3 &u, float u_val, const fvec3 &v,
+                           float v_val) {
+
+
+    fvec3 nu_cross = cross(n, u);
+    float det = dot(nu_cross, v);
+
+    if (std::abs(det) < 1e-5f)
+      return {0, 0, 0};
+
+
+
+    return (cross(u, v) * d + cross(v, n) * u_val + cross(n, u) * v_val) / det;
+  }
+
+  fvec3 MapSurface::calcWorldFromStandardLightmapUV(fvec2 uv) {
+
+    float du = fabs(dot(m_planeNormal, UP_VEC));
+    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
+    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
+
+    fvec3 uAxis, vAxis;
+
+    if (du >= dr && du >= df) {
+
+      uAxis = {1, 0, 0};
+      vAxis = {0, -1, 0};
+    } else if (dr >= du && dr >= df) {
+
+      uAxis = {1, 0, 0};
+      vAxis = {0, 0, -1};
+    } else {
+
+      uAxis = {0, 1, 0};
+      vAxis = {0, 0, -1};
+    }
+
+    return SolvePlanes(m_planeNormal, m_planeDist, uAxis, uv[0], vAxis, uv[1]);
+  }
+
+  fvec3 MapSurface::calcWorldFromValveLightmapUV(fvec2 uv) {
+    fvec3 uAxis = m_valveUV.u.xyz();
+    fvec3 vAxis = m_valveUV.v.xyz();
+
+    return SolvePlanes(m_planeNormal, m_planeDist, uAxis, uv[0], vAxis, uv[1]);
+  }
+
   std::pair<FacePtr, FacePtr> MapSurface::splitFace(const MapSurface *other) {
     std::vector<MapSurface::eFaceClassification> pCF;
     pCF.resize(other->m_vertices.size());
@@ -298,4 +379,4 @@ namespace quakelib::map {
     }
     return {front, back};
   }
-} // namespace quakelib::map
+}

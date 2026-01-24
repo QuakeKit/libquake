@@ -54,3 +54,13 @@ TEST_CASE("parse map", "[map/parsing]") {
   });
   REQUIRE(m->PointEntities().size() == POINT_COUNT);
 }
+
+TEST_CASE("parse map wads", "[map/wads]") {
+  auto m = new map::QMap();
+  m->LoadBuffer(mapbuff, [&](const char *textureName) { return map::textureBounds{0, 0}; });
+  REQUIRE(m->HasWads() == true);
+  REQUIRE(m->Wads().size() == 2);
+  REQUIRE(m->Wads()[0] == "makkon_tech.wad");
+  REQUIRE(m->Wads()[1] == "prototype_all_1_3.wad");
+  delete m;
+}

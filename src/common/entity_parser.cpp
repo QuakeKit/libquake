@@ -26,7 +26,7 @@ namespace quakelib {
     return s;
   }
 
-  // const std::istream &stream
+
   void EntityParser::ParseEntites(std::istream &strstr, EntityParsedFunc fn) {
     std::vector<ParsedEntity *> objects;
     ParsedEntity *current = nullptr;
@@ -39,9 +39,9 @@ namespace quakelib {
       }
       line = ltrim(line);
 
-      // HACK: we better analyze the face UV's to figure out format.
+
       if (line == "// Format: Valve") {
-        // mapVersion = VALVE_VERSION;
+
       }
       if (line.starts_with("//")) {
         continue;
@@ -69,11 +69,11 @@ namespace quakelib {
       }
       if (current != nullptr) {
         current->lines << line << std::endl;
-        // if we find a model, it's a solid
+
         if (current->parent == nullptr && line.rfind("\"model\" \"*", 0) != std::string::npos) {
           current->type = EntityType::SOLID;
         }
-        // if it is worldspawn, it's a worldspawn
+
         if (!foundWorldSpawn && line == "\"classname\" \"worldspawn\"") {
           current->type = EntityType::WORLDSPAWN;
           foundWorldSpawn = true;
@@ -145,4 +145,4 @@ namespace quakelib {
     m_attributes.erase("wad");
   }
 
-} // namespace quakelib
+}

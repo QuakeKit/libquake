@@ -1,4 +1,4 @@
-#include "data.h"
+#include "scene.h"
 #include <iostream>
 #include <quakelib/map/map.h>
 #include <strstream>
@@ -6,40 +6,33 @@
 using std::cout, std::endl;
 using namespace quakelib;
 
-/*
-class MyPoint : public PointEntity {};
-*/
-int main() {
-  /*
-  EntityParser::ParseEntites(mapbuff, [](ParsedEntity *pe) {
-    if (pe->type != EntityType::SOLID && pe->type != EntityType::WORLDSPAWN) {
-      return;
-    }
+void banner() {
+  cout << "QFORMAT test app\n"
+       << "----------------" << endl;
+}
 
-    SolidEntity se;
-    se.FillFromParsed(pe);
-    cout << se.ClassName() << endl;
+int main(int argc, char *argv[]) {
+  banner();
+  
+  std::string mapPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/maps/orig/START.MAP";
+  std::string wadPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/wads/";
 
-    for (auto child : pe->children) {
-      for (std::string line; std::getline(child->lines, line);) {
-        cout << line + "\n";
-      }
-    }
-  });
-  */
-
-  map::QMap map;
-  map.LoadBuffer(mapbuff, nullptr);
-  for (auto &solid : map.SolidEntities()) {
-    cout << "Solid Entity: " << solid->ClassName() << endl;
-    for (auto &brush : solid->Brushes()) {
-      cout << " Brush with " << brush.Faces().size() << " faces." << endl;
-      for (auto &face : brush.Faces()) {
-        cout << "  Face with " << face->Vertices().size() << " vertices." << endl;
-        cout << "  Tex " << map.TextureName(face->TextureID()) << endl;
-      }
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg == "-m" && i + 1 < argc) {
+      mapPath = argv[++i];
+    } else if (arg == "-w" && i + 1 < argc) {
+      wadPath = argv[++i];
     }
   }
 
+  auto scene = Scene();
+
+  QuakeMapOptions opts;
+  opts.wadPath = wadPath;
+  opts.backgroundColor = BLACK;
+
+  scene.LoadQuakeMap(mapPath, opts);
+  scene.Run();
   return 0;
 }

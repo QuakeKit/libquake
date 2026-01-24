@@ -1,0 +1,64 @@
+site_name: LibQuake
+site_description: Documentation for LibQuake - A C++ library for Quake formats
+site_author: Tino Gohlert
+repo_url: https://github.com/tinogoehlert/libquake
+repo_name: tinogoehlert/libquake
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for dark mode (Default)
+    - scheme: slate
+      primary: black
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - scheme: default
+      primary: black
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - search.share
+    - content.code.copy
+
+plugins:
+  - mkdoxy:
+      projects:
+        libquake:
+          src-dirs: include/quakelib
+          full-doc: False
+          doxy-cfg:
+            FILE_PATTERNS: "*.h *.hpp"
+            RECURSIVE: True
+            STRIP_FROM_PATH: include/quakelib
+            STRIP_FROM_INC_PATH: include
+  - search
+  - awesome-pages
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

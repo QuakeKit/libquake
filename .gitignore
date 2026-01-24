@@ -11,3 +11,5 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 build/
+site/docs_gen/doxygen_output/
+.vscode

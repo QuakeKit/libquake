@@ -31,6 +31,10 @@ endif()
 
 add_executable(${PROJECT_NAME}
         main.cpp
+        scene.cpp
+        assets/asset_manager.cpp
+        builder/map_builder.cpp
+        renderer/map_renderer.cpp
 )
 
 target_link_libraries(

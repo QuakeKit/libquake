@@ -11,8 +11,8 @@ namespace quakelib {
 
   const char *STR_CLASSNAME = "classname";
 
-  ///  Base Entity
-  ///
+
+
 
   const string &Entity::ClassName() const { return m_classname; }
 
@@ -60,11 +60,11 @@ namespace quakelib {
     return ret;
   }
 
-  ///  Point Entity
-  ///
+
+
 
   const tue::fvec3 &PointEntity::Origin() const { return m_origin; }
 
   float PointEntity::Angle() { return m_angle; }
 
-} // namespace quakelib
+}

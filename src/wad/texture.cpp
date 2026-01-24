@@ -59,4 +59,4 @@ namespace quakelib::wad {
   const cvec &QuakeSkyTexture::BaseSky() const { return raw; }
 
   const cvec &QuakeSkyTexture::Alphaky() const { return rawFront; }
-} // namespace quakelib::wad
+}

@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(snitch)
 set(YOUR_TEST_FILES
     src/bsp_tests.cpp
     src/map_tests.cpp
+    src/map_builder_tests.cpp
 )
 
 add_executable(${PROJECT_NAME} ${YOUR_TEST_FILES})

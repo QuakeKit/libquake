@@ -7,22 +7,24 @@ namespace quakelib::map {
     m_map_file = std::make_shared<QMapFile>();
     m_map_file->Parse(buffer);
     if (getTextureBounds != nullptr) {
-      for (int i = 0; i < m_map_file->m_textures.size(); i++) {
-        m_textureIDBounds[i] = getTextureBounds(m_map_file->m_textures[i].c_str());
-      }
+      RegisterTextureBounds(getTextureBounds);
     }
-    GenerateGeometry(true);
   }
 
   void QMap::LoadFile(const std::string &filename, getTextureBoundsCb getTextureBounds) {
     m_map_file = std::make_shared<QMapFile>();
     m_map_file->Parse(filename);
     if (getTextureBounds != nullptr) {
+      RegisterTextureBounds(getTextureBounds);
+    }
+  }
+
+  void QMap::RegisterTextureBounds(getTextureBoundsCb getTextureBounds) {
+    if (getTextureBounds != nullptr && m_map_file) {
       for (int i = 0; i < m_map_file->m_textures.size(); i++) {
         m_textureIDBounds[i] = getTextureBounds(m_map_file->m_textures[i].c_str());
       }
     }
-    GenerateGeometry(true);
   }
 
   void QMap::GenerateGeometry(bool clipBrushes) {
@@ -108,4 +110,4 @@ namespace quakelib::map {
       }
     }
   }
-} // namespace quakelib::map
+}

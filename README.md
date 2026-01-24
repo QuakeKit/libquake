@@ -12,18 +12,24 @@
 
 # LibQuake
 
-**LibQuake** is a modern C++ library designed to parse, manipulate, and generate formats used by the Quake engine and its derivatives. It is written in C++20 and intended for tools, map compilers, and engine experiments.
+**LibQuake** is a modern C++ library designed to parse formats used by the Quake engine and its derivatives. It is written in C++20 and intended for tools and engine.
+
+## Supported formats
+
+*   **Map**: Full parsing of `.map` files (Standard and Valve format).
+*   **WAD**: Parsing of `.wad` (Texture archives) files.
+
 
 ## Features
 
-*   **Map Format Support**: Full parsing of `.map` files (Standard and Valve format).
-*   **WAD Management**: Parsing of `.wad` (Texture archives) files.
-*   **Geometry Generation**:
+*   **Geometry Generation (Map)**:
     *   Brush construction from planes.
     *   CSG (Constructive Solid Geometry) operations.
     *   Polygon generation and winding.
     *   Texture coordinate calculation (Standard and Valve/Source UVs).
-*   **Entity Parsing**: Robust parsing of entity definitions and key-values.
+*   **Lightmap Generation**:
+*   **Entity Parsing**: Parsing of entity definitions and key-values.
+
 
 ## Getting Started
 

@@ -4,6 +4,12 @@ add_library(${PROJECT_NAME} SHARED
         common/entity.cpp
         common/entity_parser.cpp
 
+        bsp/qbsp.cpp
+        bsp/entity.cpp
+        bsp/entity_solid.cpp
+        bsp/surface.cpp
+        bsp/lightmap.cpp
+
         map/map_file.cpp
         map/map.cpp
         map/brush.cpp

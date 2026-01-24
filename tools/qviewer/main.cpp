@@ -13,7 +13,7 @@ void banner() {
 
 int main(int argc, char *argv[]) {
   banner();
-  
+
   std::string mapPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/maps/orig/START.MAP";
   std::string wadPath = "/Users/tinogohlert/workspace/chunkycat/quake_data/wads/";
 

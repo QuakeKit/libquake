@@ -116,7 +116,7 @@ jobs:
           asset_content_type: application/zip
   notify-unity:
     runs-on: ubuntu-latest
-    needs: release
+    needs: [release, build]
     steps:
       - name: Trigger Unity sync
         run: |

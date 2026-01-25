@@ -20,10 +20,21 @@ set(YOUR_TEST_FILES
     src/bsp_tests.cpp
     src/map_tests.cpp
     src/map_builder_tests.cpp
+    src/wrapper_tests.cpp
+    src/wad_tests.cpp
 )
 
 add_executable(${PROJECT_NAME} ${YOUR_TEST_FILES})
 target_link_libraries(${PROJECT_NAME} PRIVATE snitch::snitch quakelib)
+
+# Copy test data files to build directory
+add_custom_command(
+    TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/data
+    ${CMAKE_BINARY_DIR}/tests/data
+    COMMENT "Copying test data files"
+)
 
 add_custom_command(
      TARGET ${PROJECT_NAME}

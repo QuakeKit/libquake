@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.0.1 - Bug Fixes
+
+### Fixed
+
+- **WAD Wrapper RGBA Conversion**: Fixed incorrect byte size calculation when converting texture data from internal `std::vector<color>` to C API byte array. Was setting `dataSize` to pixel count instead of `pixel_count * 4`, causing truncated texture data export.
+- **Memory Leak in WAD Loading**: Fixed leak in `QuakeWad::GetTexture()` where dynamically allocated texture from `FromBuffer()` was copied but never freed.
+
+### Added
+
+- **C Wrapper API Documentation**: Comprehensive documentation with struct memory layouts and code examples for WAD, BSP, and MAP APIs.
+- **Unit Tests**: Added extensive test coverage for WAD loading and wrapper API validation.
+
+### Technical Notes
+
+**Why `textureName` in submesh?** Including the texture name directly in each submesh makes it self-contained for FFI consumers—no need to maintain separate lookup tables. It also handles missing textures gracefully (when `textureID` is -1) and provides better error messages during debugging.
+
+---
+
 ## v1.0.0 - Initial Release
 
 ### Features

@@ -55,18 +55,22 @@ static void FreeStringArray(char **arr, uint32_t count) {
 static void ExportAttributes(const quakelib::Entity *entity, uint32_t *outCount, char ***outKeys,
                              char ***outValues) {
   const auto &attrs = entity->Attributes();
-  *outCount = static_cast<uint32_t>(attrs.size());
+  // Add 1 for classname which is stored separately
+  size_t totalAttrs = attrs.size() + 1;
+  *outCount = static_cast<uint32_t>(totalAttrs);
 
-  if (attrs.empty()) {
-    *outKeys = nullptr;
-    *outValues = nullptr;
-    return;
-  }
+  *outKeys = (char **)QLib_Malloc(totalAttrs * sizeof(char *));
+  *outValues = (char **)QLib_Malloc(totalAttrs * sizeof(char *));
 
-  *outKeys = (char **)QLib_Malloc(attrs.size() * sizeof(char *));
-  *outValues = (char **)QLib_Malloc(attrs.size() * sizeof(char *));
+  // First add classname
+  const std::string &className = entity->ClassName();
+  (*outKeys)[0] = (char *)QLib_Malloc(10); // "classname"
+  (*outValues)[0] = (char *)QLib_Malloc(className.length() + 1);
+  std::strcpy((*outKeys)[0], "classname");
+  std::strcpy((*outValues)[0], className.c_str());
 
-  size_t idx = 0;
+  // Then add other attributes
+  size_t idx = 1;
   for (const auto &[key, value] : attrs) {
     (*outKeys)[idx] = (char *)QLib_Malloc(key.length() + 1);
     (*outValues)[idx] = (char *)QLib_Malloc(value.length() + 1);
@@ -108,14 +112,19 @@ API_EXPORT QLibWadData *QLibWad_ExportAll(void *wadPtr) {
     SafeStrCopy(outTex.name, name, 16);
     outTex.width = entry.texture.width;
     outTex.height = entry.texture.height;
-    outTex.dataSize = static_cast<uint32_t>(entry.texture.raw.size());
     outTex.isSky = (entry.Type() == quakelib::wad::QuakeWadEntry::QWET_SBarPic)
                        ? 0
                        : (quakelib::wad::QuakeWad::IsSkyTexture(name) ? 1 : 0);
 
-    if (outTex.dataSize > 0) {
+    // Convert color vector to RGBA bytes
+    size_t numPixels = entry.texture.raw.size();
+    outTex.dataSize = static_cast<uint32_t>(numPixels * 4); // RGBA
+
+    if (numPixels > 0) {
       outTex.data = (uint8_t *)QLib_Malloc(outTex.dataSize);
-      std::memcpy(outTex.data, entry.texture.raw.data(), outTex.dataSize);
+      for (size_t i = 0; i < numPixels; i++) {
+        std::memcpy(&outTex.data[i * 4], entry.texture.raw[i].rgba, 4);
+      }
     } else {
       outTex.data = nullptr;
     }
@@ -137,12 +146,17 @@ API_EXPORT QLibWadTexture *QLibWad_GetTexture(void *wadPtr, const char *name) {
   SafeStrCopy(outTex->name, name, 16);
   outTex->width = texture->width;
   outTex->height = texture->height;
-  outTex->dataSize = static_cast<uint32_t>(texture->raw.size());
   outTex->isSky = quakelib::wad::QuakeWad::IsSkyTexture(name) ? 1 : 0;
 
-  if (outTex->dataSize > 0) {
+  // Convert color vector to RGBA bytes
+  size_t numPixels = texture->raw.size();
+  outTex->dataSize = static_cast<uint32_t>(numPixels * 4); // RGBA
+
+  if (numPixels > 0) {
     outTex->data = (uint8_t *)QLib_Malloc(outTex->dataSize);
-    std::memcpy(outTex->data, texture->raw.data(), outTex->dataSize);
+    for (size_t i = 0; i < numPixels; i++) {
+      std::memcpy(&outTex->data[i * 4], texture->raw[i].rgba, 4);
+    }
   } else {
     outTex->data = nullptr;
   }

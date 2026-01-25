@@ -1,8 +1,12 @@
 # API Reference
 
-These pages contain the automatically generated documentation for the `libquake` C++ classes.
+These pages contain the documentation for the `libquake` library.
 
-## Modules
+## C Wrapper API
+
+*   [**C Wrapper API**](wrapper.md): C-compatible wrapper for FFI integration with other languages. Includes complete struct memory layouts and usage examples.
+
+## C++ Modules
 
 *   [**Map System**](map.md): Classes for handling `.map` files, geometry generation, and brushes.
 *   [**BSP System**](bsp.md): Classes for loading and processing compiled Quake BSP files.

@@ -64,8 +64,12 @@ namespace quakelib::wad {
       m_istream.read((char *)&qwe.texture.mipOffsets, sizeof(uint32_t) * MAX_MIP_LEVELS);
       std::vector<uint8_t> buff(qwe.texture.width * qwe.texture.height);
       m_istream.read((char *)buff.data(), buff.size());
-      qwe.texture =
-          *FromBuffer(buff.data(), IsSkyTexture(textureName), qwe.texture.width, qwe.texture.height);
+
+      // FromBuffer allocates with new, so we need to copy and delete
+      QuakeTexture *temp =
+          FromBuffer(buff.data(), IsSkyTexture(textureName), qwe.texture.width, qwe.texture.height);
+      qwe.texture = *temp;
+      delete temp;
     }
 
     return &qwe.texture;
@@ -83,4 +87,4 @@ namespace quakelib::wad {
     qtex->FillTextureData(buff, width * height, opts.flipTexHorizontal, m_pal);
     return qtex;
   }
-}
+} // namespace quakelib::wad

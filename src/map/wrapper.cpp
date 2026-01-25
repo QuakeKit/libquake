@@ -14,7 +14,10 @@ API_EXPORT QMap *LoadMap(const char *mapFile, textureBounds(getTextureBounds)(co
 
 API_EXPORT void GenerateGeometry(QMap *ptr, int *outPointEntCount, int *outSolidEntCount,
                                  bool clipBrushes = true) {
-  ptr->GenerateGeometry(clipBrushes);
+  QMapConfig cfg;
+  cfg.csg = clipBrushes;
+  ptr->SetConfig(cfg);
+  ptr->GenerateGeometry();
   *outSolidEntCount = (int)ptr->SolidEntities().size();
   *outPointEntCount = (int)ptr->PointEntities().size();
 }

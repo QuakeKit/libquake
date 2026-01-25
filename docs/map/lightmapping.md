@@ -1,154 +1,286 @@
 # Lightmapping System
 
-Lightmapping in Quake allows for high-quality static lighting with low runtime cost. It pre-calculates the incident light at surfaces and stores the result in a texture (the Lightmap Atlas). This document details the specific algorithms used in `LightmapGenerator`.
+Lightmapping pre-calculates lighting for map surfaces and stores it in a texture atlas. This creates high-quality static lighting with minimal runtime cost. This document explains how `LightmapGenerator` works using code examples.
 
 ## 1. Generation Pipeline
 
-The generation process occurs in four distinct stages:
+The generation process has four stages:
 
-1.  **Surface Parameterization (UV Generation)**
-2.  **Chart Packing (Atlas Generation)**
-3.  **Coordinate Remapping**
-4.  **Radiance Evaluation (Baking)**
+1.  **Surface Parameterization** - Calculate UV coordinates for each face
+2.  **Chart Packing** - Arrange all face lightmaps into an atlas texture
+3.  **Coordinate Remapping** - Update UVs to reference the final atlas
+4.  **Radiance Evaluation** - Calculate lighting for each pixel (luxel)
 
 ### Stage 1: Surface Parameterization (Planar Mapping)
 
-For every solid face in the map, we generate a set of 2D coordinates. Unlike modern UV unwrapping which might use Least Squares Conformal Maps (LSCM), Quake uses **Planar Projection** based on the texture axes defined in the .MAP file actions.
+Each face needs 2D coordinates for its lightmap. Quake uses **Planar Projection** based on the texture axes from the .MAP file.
 
-Given a vertex position $P(x,y,z)$, the lightmap UVs $(u, v)$ are calculated via dot products with the surface's texture vectors:
+**Calculating Lightmap UVs:**
 
-$$
-u = (P \cdot \vec{U}_{axis})
-$$
-$$
-v = (P \cdot \vec{V}_{axis})
-$$
+```cpp
+// For each vertex on a face
+vec2 CalculateLightmapUV(vec3 vertexPos, Face face) {
+    // Project 3D position onto 2D plane using texture axes
+    float u = dot(vertexPos, face.uAxis);
+    float v = dot(vertexPos, face.vAxis);
+    
+    return vec2(u, v);
+}
+```
 
-Where $\vec{U}_{axis}$ and $\vec{V}_{axis}$ are derived from the plane normal to ensure minimal distortion.
+**Finding Face Bounds:**
 
-*   **Bounds Calculation**: We iterate all vertices of a face to find $min(u,v)$ and $max(u,v)$.
-*   **Dimensions**: The integer dimensions of the lightmap chart for a face are:
-    $$
-    W = \lceil \frac{max_u - min_u}{\text{LuxelSize}} \rceil + 1
-    $$
-    $$
-    H = \lceil \frac{max_v - min_v}{\text{LuxelSize}} \rceil + 1
-    $$
-    *(Note: LuxelSize is typically 16 world units).*
+```cpp
+struct FaceBounds {
+    float minU, maxU;
+    float minV, maxV;
+};
+
+FaceBounds CalculateFaceBounds(Face face) {
+    FaceBounds bounds = {INFINITY, -INFINITY, INFINITY, -INFINITY};
+    
+    // Check all vertices to find min/max
+    for (Vertex vertex : face.vertices) {
+        vec2 uv = CalculateLightmapUV(vertex.position, face);
+        
+        bounds.minU = min(bounds.minU, uv.x);
+        bounds.maxU = max(bounds.maxU, uv.x);
+        bounds.minV = min(bounds.minV, uv.y);
+        bounds.maxV = max(bounds.maxV, uv.y);
+    }
+    
+    return bounds;
+}
+```
+
+**Calculating Lightmap Size:**
+
+```cpp
+// How many lightmap pixels (luxels) does this face need?
+struct LightmapSize {
+    int width;
+    int height;
+};
+
+LightmapSize CalculateLightmapSize(FaceBounds bounds) {
+    const float LUXEL_SIZE = 16.0f;  // One lightmap pixel per 16 world units
+    
+    float extentU = bounds.maxU - bounds.minU;
+    float extentV = bounds.maxV - bounds.minV;
+    
+    // Round up and add 1 for padding
+    int width = (int)ceil(extentU / LUXEL_SIZE) + 1;
+    int height = (int)ceil(extentV / LUXEL_SIZE) + 1;
+    
+    return {width, height};
+}
+```
 
 ### Stage 2: Chart Packing (Atlas Generation)
 
-Once we have the dimensions ($W \times H$) for every face, we must arrange them into a single large texture (The Atlas) without overlapping.
+After calculating dimensions for every face, we arrange them into a single texture atlas without overlapping.
 
-**Algorithm: First-Fit Decreasing Height (Row Packing)**
-The implementation uses a "shelf" or "row-based" packing strategy optimized for rectangular items.
+**Algorithm: First-Fit Decreasing Height**
 
-1.  **Sort**: All faces are sorted by **height in descending order**. This essentially "solves" the Knapsack Problem more efficiently for rectangular packing by ensuring large items establish the row height.
-2.  **Row Filling**:
-    *   We maintain a `CurrentX`, `CurrentY`, and `RowHeight`.
-    *   If the current face fits in the remaining width of the current row:
-        *   Place it at `(CurrentX, CurrentY)`.
-        *   Advance `CurrentX` by `FaceWidth`.
-    *   If it does *not* fit:
-        *   Move to the next row: `CurrentY += RowHeight`.
-        *   Reset `CurrentX = 0`.
-        *   Reset `RowHeight = FaceHeight` (since this is the first, tallest item of the new row).
+This "shelf packing" strategy efficiently packs rectangles:
 
 ```cpp
-void LightmapGenerator::Pack() {
-    // 1. Sort faces by height
+struct PackedFace {
+    int width, height;      // Lightmap dimensions
+    int atlasX, atlasY;     // Position in atlas
+};
+
+void LightmapGenerator::PackFaces(std::vector<PackedFace>& faces) {
+    const int ATLAS_SIZE = 2048;  // 2048x2048 atlas texture
+    
+    // 1. Sort faces by height (tallest first)
+    //    This ensures large items establish row heights efficiently
     std::sort(faces.begin(), faces.end(), 
-        [](const auto& a, const auto& b) { return a.h > b.h; });
-
-    int currentX = 0;
+        [](const PackedFace& a, const PackedFace& b) {
+            return a.height > b.height;
+        });
+    
+    // 2. Pack faces row by row
+    int currentX = 0;      // Cursor position
     int currentY = 0;
-    int rowH = 0;
-
-    for (auto& face : faces) {
-        // Check if we need a new row
-        if (currentX + face.w > ATLAS_SIZE) {
-            currentY += rowH;
+    int rowHeight = 0;     // Height of current row
+    
+    for (PackedFace& face : faces) {
+        // Does this face fit in the current row?
+        if (currentX + face.width > ATLAS_SIZE) {
+            // No - start a new row
+            currentY += rowHeight;
             currentX = 0;
-            rowH = 0;
+            rowHeight = 0;
         }
-
-        // Store packing coordinates
+        
+        // Place face at current position
         face.atlasX = currentX;
         face.atlasY = currentY;
-
+        
         // Advance cursor
-        currentX += face.w;
-        rowH = std::max(rowH, face.h);
+        currentX += face.width;
+        rowHeight = max(rowHeight, face.height);
     }
 }
 ```
 
+**Why This Works:**
+- Sorts by height (O(n log n)) to minimize wasted vertical space
+- Greedy row packing fits items left-to-right
+- Simple and fast for typical face size distributions
+
+
 ### Stage 3: Coordinate Remapping
 
-After packing, the lightmap UVs stored on the vertices are still relative to the individual face (0..1 range for that specific face chart). They must be remapped to global texture coordinates (0..1 range for the entire atlas).
+After packing, vertex UVs are relative to individual faces (0..1 range). We need to remap them to the final atlas coordinates.
 
-$$
-u_{final} = \frac{face\_min_u + (u_{local} \times face\_w) + atlas\_x}{ATLAS\_SIZE}
-$$
+```cpp
+// Remap a vertex's local lightmap UV to atlas UV
+vec2 RemapToAtlas(vec2 localUV, PackedFace face, FaceBounds bounds) {
+    const int ATLAS_SIZE = 2048;
+    const float LUXEL_SIZE = 16.0f;
+    
+    // 1. Convert local UV (0..1) back to world units
+    float worldU = bounds.minU + (localUV.x * (bounds.maxU - bounds.minU));
+    float worldV = bounds.minV + (localUV.y * (bounds.maxV - bounds.minV));
+    
+    // 2. Convert to lightmap pixel coordinates
+    float luxelU = (worldU - bounds.minU) / LUXEL_SIZE;
+    float luxelV = (worldV - bounds.minV) / LUXEL_SIZE;
+    
+    // 3. Offset by atlas position
+    float atlasPixelX = luxelU + face.atlasX;
+    float atlasPixelY = luxelV + face.atlasY;
+    
+    // 4. Normalize to 0..1 range for the entire atlas
+    vec2 atlasUV;
+    atlasUV.x = atlasPixelX / ATLAS_SIZE;
+    atlasUV.y = atlasPixelY / ATLAS_SIZE;
+    
+    return atlasUV;
+}
 
-This ensures the geometry correctly samples its allocated portion of the giant lightmap texture.
-    *   For each face:
-        *   If `CurrentX + FaceW > AtlasWidth`: Move to next row (`CurrentY += RowHeight`, `CurrentX = 0`, `RowHeight = 0`).
-        *   Place face at `(CurrentX, CurrentY)`.
-        *   Update `RowHeight = max(RowHeight, FaceH)`.
-        *   `CurrentX += FaceW`.
+// Apply to all vertices
+void RemapFaceVertices(Face& face, PackedFace& packed, FaceBounds bounds) {
+    for (Vertex& vertex : face.vertices) {
+        vertex.lightmapUV = RemapToAtlas(vertex.lightmapUV, packed, bounds);
+    }
+}
+```
 
-This simple greedy algorithm is $O(n \log n)$ due to sorting and provides sufficiently dense packing for lightmaps where rectangles are somewhat uniform in size distribution.
+Now each vertex correctly references its portion of the atlas texture.
 
----
 
-## 3. Coordinate Remapping
+### Stage 4: Radiance Evaluation (Baking)
 
-After determining the position $(AtlasX, AtlasY)$ for a face, we must update the mesh vertices to point to this new location.
+The final step calculates the color of every lightmap pixel (luxel) by simulating light from all light entities.
 
-$$
-UV_{atlas}.x = \frac{\frac{(UV_{local}.x - UV_{min}.x)}{\text{LuxelSize}} + AtlasX}{\text{AtlasWidth}}
-$$
-$$
-UV_{atlas}.y = \frac{\frac{(UV_{local}.y - UV_{min}.y)}{\text{LuxelSize}} + AtlasY}{\text{AtlasHeight}}
-$$
+**Reconstructing World Position:**
 
-This maps the $[0, 1]$ range of the lightmap UV channel to the specific sub-rectangle in the generated atlas.
+To light a luxel, we need its 3D position. We reverse the planar projection:
 
----
+```cpp
+// Convert luxel coordinates back to world space
+vec3 LuxelToWorld(int luxelX, int luxelY, PackedFace face, FaceBounds bounds) {
+    const float LUXEL_SIZE = 16.0f;
+    
+    // 1. Convert luxel pixel to UV coordinates
+    float u = bounds.minU + (luxelX * LUXEL_SIZE);
+    float v = bounds.minV + (luxelY * LUXEL_SIZE);
+    
+    // 2. Reconstruct 3D position using texture axes
+    vec3 worldPos = face.origin;
+    worldPos += u * face.uAxis;
+    worldPos += v * face.vAxis;
+    
+    // 3. Offset slightly along normal to prevent shadow acne
+    worldPos += face.normal * 0.5f;
+    
+    return worldPos;
+}
+```
 
-## 4. Radiance Evaluation (Baking)
+**Lighting Model: Lambertian with Distance Falloff**
 
-The final step is to calculate the color of every pixel (luxel) in the allocated charts.
+For each luxel, we calculate light from all light entities:
 
-### Luxel-to-World Reconstruction
-We iterate over every pixel $(x, y)$ in a face's allocated block. To light it, we need its World Position. We invert the planar mapping:
+```cpp
+struct Light {
+    vec3 position;
+    vec3 color;
+    float radius;
+};
 
-$$
-P_{world} = P_{origin} + (u \cdot \vec{U}_{axis}) + (v \cdot \vec{V}_{axis}) + (0.5 \cdot \vec{N})
-$$
+vec3 CalculateLuxelColor(vec3 luxelPos, vec3 normal, std::vector<Light>& lights) {
+    // Start with ambient lighting
+    vec3 finalColor = vec3(0.1f, 0.1f, 0.1f);  // Dark ambient
+    
+    // Add contribution from each light
+    for (const Light& light : lights) {
+        // Vector from luxel to light
+        vec3 lightDir = light.position - luxelPos;
+        float distance = length(lightDir);
+        
+        // Skip if light is too far away
+        if (distance > light.radius) {
+            continue;
+        }
+        
+        // Normalize direction
+        lightDir = normalize(lightDir);
+        
+        // Calculate attenuation (light falloff with distance)
+        // Creates smooth sphere of influence
+        float attenuation = 1.0f - (distance / light.radius);
+        attenuation = attenuation * attenuation;  // Squared for smooth falloff
+        attenuation = max(0.0f, attenuation);
+        
+        // Calculate diffuse lighting (Lambertian reflection)
+        // Surfaces facing the light are brighter
+        float diffuse = dot(normal, lightDir);
+        diffuse = max(0.0f, diffuse);  // Clamp to 0 for backfacing
+        
+        // Add this light's contribution
+        vec3 contribution = light.color * diffuse * attenuation;
+        finalColor += contribution;
+    }
+    
+    return finalColor;
+}
+```
 
-*(We shift the position slightly along the normal $N$ to avoid self-intersection artifacts known as "shadow acne").*
+**Baking the Atlas:**
 
-### Lighting Model: Lambertian with Quadratic Falloff
-For each luxel at world position $P_{luxel}$ with normal $N$:
+```cpp
+void BakeLightmap(PackedFace face, std::vector<Light>& lights, 
+                  uint8_t* atlasData, int atlasWidth) {
+    // Iterate every pixel in this face's atlas region
+    for (int y = 0; y < face.height; y++) {
+        for (int x = 0; x < face.width; x++) {
+            // Get world position for this luxel
+            vec3 worldPos = LuxelToWorld(x, y, face, face.bounds);
+            
+            // Calculate lighting
+            vec3 color = CalculateLuxelColor(worldPos, face.normal, lights);
+            
+            // Convert to RGB bytes and write to atlas
+            int atlasX = face.atlasX + x;
+            int atlasY = face.atlasY + y;
+            int index = (atlasY * atlasWidth + atlasX) * 3;
+            
+            atlasData[index + 0] = (uint8_t)clamp(color.r * 255, 0, 255);
+            atlasData[index + 1] = (uint8_t)clamp(color.g * 255, 0, 255);
+            atlasData[index + 2] = (uint8_t)clamp(color.b * 255, 0, 255);
+        }
+    }
+}
+```
 
-1.  **Correction**: Initialize with `AmbientColor`.
-2.  **Accumulation**: For each Light $L$ in the scene:
-    *   **Vector**: $\vec{V}_{light} = L_{pos} - P_{luxel}$
-    *   **Distance**: $d = |\vec{V}_{light}|$
-    *   **Culling**: If $d > L_{radius}$, skip.
-    *   **Attenuation**: We use a modified quadratic falloff that creates a smooth sphere of influence:
-        $$
-        Atten = \max(0, 1 - \frac{d}{L_{radius}})^2
-        $$
-    *   **Lambertian Term**: The cosine law of reflection:
-        $$
-        Diffuse = \max(0, \vec{N} \cdot \text{normalize}(\vec{V}_{light}))
-        $$
-    *   **Result**: $Color += L_{color} \cdot Diffuse \cdot Atten$
-
-**Note**: The current implementation does **not** cast shadow rays (Ray-trace or BSP traversal); geometry does not occlude light. It is purely distance and normal based.
+**Important Notes:**
+- This implementation does **not** cast shadow rays - geometry doesn't occlude light
+- Lighting is purely based on distance and surface angle
+- For shadows, you'd need ray tracing or BSP traversal (not currently implemented)
 
 ---
 

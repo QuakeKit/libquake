@@ -16,9 +16,11 @@ LibQuake is a C++ library designed to parse, manipulate, and render formats used
 
 ## Features
 
-*   **BSP Loading**: Parsing of BSP29 (Quake 1) and related formats.
-*   **MAP Parsing**: Reading `.map` source files (Brush geometry).
-*   **WAD Handling**: Reading and writing texture archives.
+*   **BSP Loading**: Load and process compiled Quake BSP files with pre-calculated geometry, lighting, and visibility data.
+*   **MAP Parsing**: Read and process `.map` source files with brush geometry and CSG operations.
+*   **WAD Handling**: Read and write texture archives (WAD files).
+*   **Map Providers**: Unified interface for working with both MAP and BSP formats.
+*   **C# Bindings**: Batch-export wrapper API for Unity and other C# applications.
 *   **Math Library**: Specialized vector and matrix math for the engine's coordinate system.
 
 ## Getting Started

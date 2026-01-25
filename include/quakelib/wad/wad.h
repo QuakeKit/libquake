@@ -100,7 +100,7 @@ namespace quakelib::wad {
      * @brief Gets the type of this entry.
      * @return The QuakeWadEntryType.
      */
-    QuakeWadEntryType Type() { return (QuakeWadEntryType)header.type; }
+    QuakeWadEntryType Type() const { return (QuakeWadEntryType)header.type; }
   };
 
   class QuakeWad;

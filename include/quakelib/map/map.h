@@ -11,8 +11,29 @@
 #include "entities.h"
 #include "map_file.h"
 #include "types.h"
+#include <quakelib/config.h>
 
 namespace quakelib::map {
+  /**
+   * @brief Configuration options for loading MAP files.
+   *
+   * Extends the base Config with MAP-specific options for controlling
+   * geometry processing and CSG operations.
+   */
+  struct QMapConfig : public Config {
+    /**
+     * @brief Enable Constructive Solid Geometry (CSG) operations.
+     *
+     * When enabled, performs brush-to-brush clipping to handle intersecting
+     * geometry properly. This creates clean intersections and prevents
+     * overlapping faces, but increases processing time.
+     *
+     * Disable for faster preview rendering at the cost of visual artifacts
+     * where brushes intersect.
+     */
+    bool csg = true;
+  };
+
   /**
    * @brief Callback type for gathering polygons.
    * @param faces Vector of faces collected.
@@ -28,19 +49,41 @@ namespace quakelib::map {
   using getTextureBoundsCb = std::function<textureBounds(const char *textureName)>;
 
   /**
-   * @brief High-level class for loading and processing Quake maps.
+   * @brief High-level class for loading and processing Quake .map files.
    *
-   * QMap handles file loading, geometry generation, and provides access to entities and map data.
+   * QMap handles loading and processing of Quake source map files (.map).
+   * It parses brush and entity definitions, performs CSG operations,
+   * generates triangulated meshes, and provides access to all level data.
+   *
+   * Supports both Standard Quake (version 100) and Valve 220 map formats.
+   *
+   * ## Features
+   * - Brush geometry construction from plane equations
+   * - CSG (Constructive Solid Geometry) for intersecting brushes
+   * - Automatic mesh triangulation
+   * - T-junction fixing for proper rendering
+   * - Texture coordinate calculation
+   * - Entity management (solid and point entities)
+   * - Optional coordinate system conversion
+   *
+   * @see QMapConfig for configuration options
+   * @see QMapProvider for the IMapProvider interface implementation
    */
   class QMap {
   public:
     /**
-     * @brief Default constructor.
+     * @brief Default constructor with default configuration.
      */
     QMap() = default;
 
     /**
-     * @brief Default destructor.
+     * @brief Construct with custom configuration.
+     * @param cfg Configuration options for loading and processing.
+     */
+    QMap(QMapConfig cfg) : m_config(cfg) {};
+
+    /**
+     * @brief Destructor.
      */
     ~QMap() = default;
 
@@ -67,10 +110,31 @@ namespace quakelib::map {
     void RegisterTextureBounds(getTextureBoundsCb getTextureBounds);
 
     /**
-     * @brief Generates standard geometry (CSG, triangulation) for the map brushes.
-     * @param clipBrushes If true, performs CSG clipping (intersections).
+     * @brief Sets the configuration for the map.
+     *
+     * Updates the configuration used for geometry processing. Should be called
+     * before GenerateGeometry() to take effect.
+     *
+     * @param cfg The new configuration to apply.
      */
-    void GenerateGeometry(bool clipBrushes = true);
+    void SetConfig(const QMapConfig &cfg) { m_config = cfg; }
+
+    /**
+     * @brief Generates renderable geometry from brush definitions.
+     *
+     * Performs the following operations based on configuration:
+     * - Builds brush geometry from planes
+     * - Applies CSG operations if enabled (clips intersecting brushes)
+     * - Triangulates all faces
+     * - Fixes T-junctions
+     * - Welds vertices
+     * - Converts coordinates if requested
+     *
+     * Must be called after loading and before accessing geometry.
+     *
+     * @note This can be time-consuming for complex maps with CSG enabled.
+     */
+    void GenerateGeometry();
 
     /**
      * @brief Collects polygons for a specific entity.
@@ -158,5 +222,6 @@ namespace quakelib::map {
     std::map<int, MapSurface::eFaceType> m_textureIDTypes;
     std::map<int, textureBounds> m_textureIDBounds;
     std::shared_ptr<QMapFile> m_map_file;
+    QMapConfig m_config;
   };
 } // namespace quakelib::map

@@ -27,11 +27,25 @@ namespace quakelib::map {
     }
   }
 
-  void QMap::GenerateGeometry(bool clipBrushes) {
+  void QMap::GenerateGeometry() {
+    bool clipBrushes = m_config.csg;
     for (const auto &se : m_map_file->m_solidEntities) {
       se->generateMesh(m_textureIDTypes, m_textureIDBounds);
       if (clipBrushes) {
         se->csgUnion();
+      }
+      if (m_config.convertCoordToOGL) {
+        se->convertToOpenGLCoords();
+      }
+    }
+
+    if (m_config.convertCoordToOGL) {
+      for (const auto &pe : m_map_file->m_pointEntities) {
+        auto o = pe->Origin();
+        auto temp = o[1];
+        o[1] = o[2];
+        o[2] = -temp;
+        pe->SetOrigin(o);
       }
     }
   }

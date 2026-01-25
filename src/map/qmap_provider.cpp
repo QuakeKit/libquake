@@ -20,10 +20,12 @@ namespace quakelib {
     }
   }
 
-  void QMapProvider::GenerateGeometry(bool csg) {
-    m_csg = csg;
-    m_map.GenerateGeometry(csg);
+  bool QMapProvider::Load(const std::string &path, const quakelib::map::QMapConfig &cfg) {
+    m_map = quakelib::map::QMap(cfg);
+    return Load(path);
   }
+
+  void QMapProvider::GenerateGeometry(bool csg) { m_map.GenerateGeometry(); }
 
   void QMapProvider::SetFaceType(const std::string &textureName, SurfaceType type) {
     map::MapSurface::eFaceType mapType = map::MapSurface::SOLID;
@@ -65,7 +67,7 @@ namespace quakelib {
       return {};
 
     std::map<int, std::vector<map::FacePtr>> batchedFaces;
-    const auto &brushes = m_csg ? mapEnt->GetClippedBrushes() : mapEnt->Brushes();
+    const auto &brushes = mapEnt->Brushes();
 
     for (const auto &b : brushes) {
       for (const auto &p : b.Faces()) {

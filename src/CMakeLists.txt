@@ -17,13 +17,14 @@ add_library(${PROJECT_NAME} SHARED
         map/face.cpp
         map/entity_solid.cpp
         map/lightmap_generator.cpp
-        map/wrapper.cpp
         map/qmap_provider.cpp
 
         wad/palette.cpp
         wad/wad.cpp
         wad/texture.cpp
         wad/wad_manager.cpp
+
+        wrapper.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC "../include/")

@@ -30,6 +30,8 @@ namespace quakelib::map {
 
     const fvec3 &GetMax() const { return m_max; }
 
+    void convertToOpenGLCoords();
+
     // stats getter
     long long StatsClippedFaces() const { return m_stats_clippedFaces; }
 

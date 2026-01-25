@@ -1,8 +1,8 @@
 site_name: LibQuake
 site_description: Documentation for LibQuake - A C++ library for Quake formats
 site_author: Tino Gohlert
-repo_url: https://github.com/tinogoehlert/libquake
-repo_name: tinogoehlert/libquake
+repo_url: https://github.com/QuakeKit/libquake
+repo_name: QuakeKit/libquake
 
 docs_dir: docs
 

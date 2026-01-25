@@ -17,6 +17,7 @@
 ## Supported formats
 
 *   **Map**: Full parsing of `.map` files (Standard and Valve format).
+*   **Bsp**: Parsing of compiled `.bsp` files.
 *   **WAD**: Parsing of `.wad` (Texture archives) files.
 
 

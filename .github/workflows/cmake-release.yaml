@@ -1,0 +1,135 @@
+name: cmake-release
+
+env:
+  CTEST_NO_TESTS_ACTION: error
+  CTEST_PARALLEL_LEVEL: 0
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  release:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract tag name
+        id: tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            return context.payload.ref.replace(/refs\/tags\//, '');
+      - name: create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          draft: false
+          prerelease: false
+          release_name: ${{ steps.tag.outputs.result }}
+          tag_name: ${{ github.ref }}
+          body_path: CHANGELOG.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+    outputs:
+      out_tag: ${{ steps.tag.outputs.result }}
+      out_url: ${{ steps.create_release.outputs.upload_url }}
+
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    needs: release
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: config cmake
+        run: >-
+          cmake
+          -DCMAKE_BUILD_TYPE=Release
+          -DQLIB_BUILD_VIEWER=ON
+          -DQLIB_BUILD_TESTS=OFF
+          -Bbuild
+      
+      - name: build
+        run: cmake --build build --config Release
+      
+      - name: setup OS and pack
+        id: setup_os
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+               echo "os=linux" >> "$GITHUB_OUTPUT"
+               
+               # Pack library
+               mkdir -p dist/lib dist/include
+               cp build/bin/libquakelib.so dist/lib/
+               cp -R include/quakelib dist/include/
+               cd dist && zip -r ../libquake-linux.zip lib include && cd ..
+               
+               # Pack qviewer
+               zip -j qviewer-linux.zip build/bin/tools/qviewer
+               
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+               echo "os=macos" >> "$GITHUB_OUTPUT"
+               
+               # Codesign universal binary (already built as universal)
+               codesign --force -s - build/bin/libquakelib.dylib
+               codesign --force -s - build/bin/tools/qviewer
+               
+               # Pack library with includes
+               mkdir -p dist/lib dist/include
+               cp build/bin/libquakelib.dylib dist/lib/
+               cp -R include/quakelib dist/include/
+               cd dist && zip -r ../libquake-macos.zip lib include && cd ..
+               
+               # Pack qviewer
+               zip -j qviewer-macos.zip build/bin/tools/qviewer
+               
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+               choco install zip
+               echo "os=win" >> "$GITHUB_OUTPUT"
+               
+               # Pack library with includes
+               mkdir -p dist/lib dist/include
+               cp build/bin/Release/quakelib.dll dist/lib/ || cp build/bin/quakelib.dll dist/lib/
+               cp build/bin/Release/quakelib.lib dist/lib/ || cp build/bin/quakelib.lib dist/lib/ || true
+               cp -R include/quakelib dist/include/
+               cd dist && zip -r ../libquake-win.zip lib include && cd ..
+               
+               # Pack qviewer
+               zip -j qviewer-win.zip build/bin/tools/Release/qviewer.exe || zip -j qviewer-win.zip build/bin/tools/qviewer.exe
+               
+          else
+               echo "$RUNNER_OS not supported"
+               exit 1
+          fi
+        shell: bash
+      
+      - name: upload library artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{needs.release.outputs.out_url}}
+          asset_path: ./libquake-${{ steps.setup_os.outputs.os }}.zip
+          asset_name: libquake-${{ steps.setup_os.outputs.os }}.zip
+          asset_content_type: application/zip
+      
+      - name: upload qviewer artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{needs.release.outputs.out_url}}
+          asset_path: ./qviewer-${{ steps.setup_os.outputs.os }}.zip
+          asset_name: qviewer-${{ steps.setup_os.outputs.os }}.zip
+          asset_content_type: application/zip

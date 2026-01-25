@@ -8,6 +8,7 @@
 #include <quakelib/entities.h>
 
 #include <fstream>
+#include <functional>
 #include <map>
 
 namespace quakelib::bsp {

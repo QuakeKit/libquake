@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstring>
 #include <iostream>
+#include <quakelib/map_provider.h>
 #include <quakelib/wad/wad.h>
 #include <rlgl.h>
 
@@ -46,7 +47,7 @@ void AssetManager::LoadWads(const std::vector<std::string> &wadFiles) {
 
 Material *AssetManager::BuildMaterialPool(const std::vector<std::string> &textureNames, Shader mapShader,
                                           Shader skyShader, Texture2D lightmapAtlas,
-                                          const QuakeMapOptions &opts) {
+                                          const QuakeMapOptions &opts, quakelib::IMapProviderPtr provider) {
   if (materialPool)
     Cleanup();
 
@@ -69,6 +70,22 @@ Material *AssetManager::BuildMaterialPool(const std::vector<std::string> &textur
         memcpy(image.data, &qt->raw[0], size);
         image.width = qt->width;
         image.height = qt->height;
+        image.mipmaps = 1;
+        image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
+        rayTex = LoadTextureFromImage(image);
+        found = true;
+        RL_FREE(image.data);
+      }
+    } else if (provider) {
+      // Try getting from provider
+      auto td = provider->GetTextureData(texName);
+      if (td) {
+        Image image;
+        size_t size = td->data.size();
+        image.data = RL_MALLOC(size);
+        memcpy(image.data, td->data.data(), size);
+        image.width = td->width;
+        image.height = td->height;
         image.mipmaps = 1;
         image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
         rayTex = LoadTextureFromImage(image);

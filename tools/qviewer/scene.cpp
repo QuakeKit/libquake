@@ -1,5 +1,9 @@
 #include "scene.h"
 #include "builder/map_builder.h"
+#include "common_utils.h"
+#include <filesystem>
+#include <quakelib/bsp/qbsp_provider.h>
+#include <quakelib/map/qmap_provider.h>
 #include <raymath.h>
 #include <string>
 
@@ -27,12 +31,52 @@ void Scene::LoadQuakeMap(const std::string &fileName, QuakeMapOptions opts) {
 
   assetMgr = std::make_unique<AssetManager>(opts.wadPath, opts.texturePath);
 
+  std::filesystem::path path(fileName);
+  std::shared_ptr<quakelib::IMapProvider> provider;
+
+  if (path.extension() == ".bsp" || path.extension() == ".BSP") {
+    provider = std::make_shared<quakelib::QBspProvider>();
+    currentOpts.lightmapMultiplier = 2.0f;
+  } else {
+    provider = std::make_shared<quakelib::QMapProvider>();
+    currentOpts.lightmapMultiplier = 1.0f;
+  }
+
+  if (!provider->Load(fileName)) {
+    TraceLog(LOG_ERROR, "Failed to load map/bsp file");
+    return;
+  }
+
+  // Load WADs specified in map (if any)
+  auto wads = provider->GetRequiredWads();
+  if (!wads.empty()) {
+    assetMgr->LoadWads(wads);
+  }
+
+  // Register texture bounds provider using AssetManager
+  provider->SetTextureBoundsProvider([this](const std::string &name) -> std::pair<int, int> {
+    std::string sName = to_lower(name);
+    auto qt = this->assetMgr->GetWadManager().FindTexture(sName);
+    if (qt) {
+      return {qt->width, qt->height};
+    }
+    return {0, 0};
+  });
+
+  // Configure default types for both
+  provider->SetFaceType("clip", quakelib::SurfaceType::CLIP);
+  provider->SetFaceType("trigger", quakelib::SurfaceType::CLIP);
+  provider->SetFaceType("skip", quakelib::SurfaceType::SKIP);
+
+  // Generate geometry (CSG on for maps, ignored for BSP)
+  provider->GenerateGeometry(true);
+
   MapBuilder builder(*assetMgr, opts);
-  currentMapData = builder.Build(fileName);
+  currentMapData = builder.Build(provider);
 
   Material *materials =
       assetMgr->BuildMaterialPool(currentMapData.textureNames, renderer->GetMapShader(),
-                                  renderer->GetSkyShader(), currentMapData.lightmapAtlas, opts);
+                                  renderer->GetSkyShader(), currentMapData.lightmapAtlas, opts, provider);
 
   for (auto &qm : currentMapData.models) {
     qm.model.materials = materials;

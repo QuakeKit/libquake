@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <quakelib/bsp/qbsp.h>
+#include <quakelib/entity_parser.h>
 
 namespace quakelib::bsp {
   template <typename T> bool loadLumptoVector(std::ifstream &istream, const lump_t &lump, vector<T> &v) {
@@ -40,22 +41,25 @@ namespace quakelib::bsp {
 
     if (m_content.header.lump[LUMP_ENTITIES].length > 0) {
       m_istream.seekg(m_content.header.lump[LUMP_ENTITIES].offset, m_istream.beg);
-      char *ents = (char *)malloc(m_content.header.lump[LUMP_ENTITIES].length + 1 / sizeof(char));
-      m_istream.read(ents, m_content.header.lump[LUMP_ENTITIES].length);
-      BaseEntity::ParseEntites(ents, [&](BaseEntity &e) {
-        if (e.Type() == ETypeSolidEntity) {
-          auto se = std::make_shared<SolidEntity>(this->Content(), e);
+      std::string entData;
+      entData.resize(m_content.header.lump[LUMP_ENTITIES].length);
+      m_istream.read(entData.data(), m_content.header.lump[LUMP_ENTITIES].length);
+
+      EntityParser::ParseEntites(entData, [&](ParsedEntity *pe) {
+        if (pe->type == EntityType::SOLID || pe->type == EntityType::WORLDSPAWN) {
+          auto se = std::make_shared<SolidEntity>(this->Content(), pe);
           this->m_solidEntities.emplace_back(se);
-          this->m_entities[se->m_classname].push_back(se);
-          if (se->Classname() == "worldspawn") {
+          this->m_entities[se->ClassName()].push_back(se);
+          if (se->IsWorldSpawn()) {
             this->m_worldSpawn = se;
           }
           return;
         }
-        this->m_pointEntities.push_back(std::make_shared<BaseEntity>(e));
-        this->m_entities[e.m_classname].emplace_back(std::make_shared<BaseEntity>(e));
+        auto pt = std::make_shared<quakelib::PointEntity>();
+        pt->FillFromParsed(pe);
+        this->m_pointEntities.push_back(pt);
+        this->m_entities[pt->ClassName()].emplace_back(pt);
       });
-      free(ents);
     }
 
     prepareLightMaps();
@@ -112,7 +116,15 @@ namespace quakelib::bsp {
     if (m_config.convertCoordToOGL) {
       for (auto pe : m_entities) {
         for (auto &e : pe.second) {
-          e->convertToOpenGLCoords();
+          if (auto se = std::dynamic_pointer_cast<SolidEntity>(e)) {
+            se->convertToOpenGLCoords();
+          } else if (auto pt = std::dynamic_pointer_cast<quakelib::PointEntity>(e)) {
+            auto o = pt->Origin();
+            auto temp = o[1];
+            o[1] = o[2];
+            o[2] = -temp;
+            pt->SetOrigin(o);
+          }
         }
       }
     }

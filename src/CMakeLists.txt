@@ -5,7 +5,7 @@ add_library(${PROJECT_NAME} SHARED
         common/entity_parser.cpp
 
         bsp/qbsp.cpp
-        bsp/entity.cpp
+        bsp/qbsp_provider.cpp
         bsp/entity_solid.cpp
         bsp/surface.cpp
         bsp/lightmap.cpp
@@ -18,6 +18,7 @@ add_library(${PROJECT_NAME} SHARED
         map/entity_solid.cpp
         map/lightmap_generator.cpp
         map/wrapper.cpp
+        map/qmap_provider.cpp
 
         wad/palette.cpp
         wad/wad.cpp

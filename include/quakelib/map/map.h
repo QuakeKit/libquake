@@ -91,19 +91,19 @@ namespace quakelib::map {
      * @brief Gets the list of WAD files referenced by the map.
      * @return Vector of WAD filenames.
      */
-    const std::vector<std::string> &Wads() { return m_map_file->m_wads; };
+    const std::vector<std::string> &Wads() const { return m_map_file->m_wads; };
 
     /**
      * @brief Checks if the map references any WAD files.
      * @return True if WADs are present, false otherwise.
      */
-    bool HasWads() { return !m_map_file->m_wads.empty(); };
+    bool HasWads() const { return !m_map_file->m_wads.empty(); };
 
     /**
      * @brief Gets all texture names used in the map.
      * @return Vector of texture names.
      */
-    const std::vector<std::string> &TextureNames() { return m_map_file->m_textures; };
+    const std::vector<std::string> &TextureNames() const { return m_map_file->m_textures; };
 
     /**
      * @brief Gets a texture name by its internal ID.
@@ -137,13 +137,13 @@ namespace quakelib::map {
      * @brief Gets the list of solid (brush-based) entities.
      * @return Vector of pointers to solid entities.
      */
-    const std::vector<SolidEntityPtr> &SolidEntities() { return m_map_file->m_solidEntities; };
+    const std::vector<SolidEntityPtr> &SolidEntities() const { return m_map_file->m_solidEntities; };
 
     /**
      * @brief Gets the list of point entities.
      * @return Vector of pointers to point entities.
      */
-    const std::vector<PointEntityPtr> &PointEntities() { return m_map_file->m_pointEntities; };
+    const std::vector<PointEntityPtr> &PointEntities() const { return m_map_file->m_pointEntities; };
 
     /**
      * @brief Finds point entities by their classname.

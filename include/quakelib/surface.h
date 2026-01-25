@@ -10,6 +10,7 @@ namespace quakelib {
   enum class SurfaceType {
     SOLID,  ///< A standard solid surface that is drawn.
     CLIP,   ///< A clipping surface used for collision but not drawn.
+    SKIP,   ///< A surface that should be ignored/removed.
     NODRAW, ///< A surface that is neither drawn nor used for standard collision (e.g., triggers).
   };
 

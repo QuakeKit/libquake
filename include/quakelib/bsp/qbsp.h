@@ -4,11 +4,14 @@
 #include "entity_solid.h"
 #include "lightmap.h"
 #include "primitives.h"
+#include <quakelib/entities.h>
 
 #include <fstream>
 #include <map>
 
 namespace quakelib::bsp {
+  using EntityPtr = std::shared_ptr<quakelib::Entity>;
+
   enum EQBspStatus {
     QBSP_OK = 0,
     QBSP_ERR_WRONG_VERSION = -1001,
@@ -37,7 +40,7 @@ namespace quakelib::bsp {
     // also load texture data when loading texture lump.
     bool loadTextureData = true;
     // convert coordinates to OpenGL;
-    bool convertCoordToOGL = true;
+    bool convertCoordToOGL = false;
   };
 
   /**
@@ -53,7 +56,7 @@ namespace quakelib::bsp {
     uint32_t Version() const;
 
     const SolidEntityPtr WorldSpawn() const;
-    const map<string, vector<EntityPtr>> &Entities() const;
+    const std::map<string, vector<EntityPtr>> &Entities() const;
     bool Entities(const string &className, std::function<bool(EntityPtr)> cb) const;
     const vector<EntityPtr> &PointEntities() const;
     const vector<SolidEntityPtr> &SolidEntities() const;
@@ -75,7 +78,7 @@ namespace quakelib::bsp {
     string m_mapPath = "";
 
     vector<EntityPtr> m_pointEntities;
-    map<string, vector<EntityPtr>> m_entities;
+    std::map<string, vector<EntityPtr>> m_entities;
     vector<SolidEntityPtr> m_solidEntities;
 
     vector<bspTexure> m_textures;

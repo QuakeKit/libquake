@@ -23,6 +23,7 @@ void MapRenderer::Init() {
   mapShader = LoadShaderFromMemory(VS_CODE, FS_CODE);
   wireframeLoc = GetShaderLocation(mapShader, "renderWireframe");
   viewPosLoc = GetShaderLocation(mapShader, "viewPos");
+  lightMultiplierLoc = GetShaderLocation(mapShader, "lightmapMultiplier");
 
   skyShader = LoadShaderFromMemory(VS_CODE, FS_SKY_CODE);
   skyTimeLoc = GetShaderLocation(skyShader, "time");
@@ -38,6 +39,10 @@ void MapRenderer::Draw(const GeneratedMapData &mapData, const Camera &camera, co
   if (mapShader.id > 0 && viewPosLoc != -1) {
     float camPos[3] = {cameraPos.x, cameraPos.y, cameraPos.z};
     SetShaderValue(mapShader, viewPosLoc, camPos, SHADER_UNIFORM_VEC3);
+  }
+
+  if (mapShader.id > 0 && lightMultiplierLoc != -1) {
+    SetShaderValue(mapShader, lightMultiplierLoc, &opts.lightmapMultiplier, SHADER_UNIFORM_FLOAT);
   }
 
   if (skyShader.id > 0) {

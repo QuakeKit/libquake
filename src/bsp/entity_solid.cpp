@@ -2,7 +2,16 @@
 #include <quakelib/bsp/entity_solid.h>
 
 namespace quakelib::bsp {
-  SolidEntity::SolidEntity(const bspFileContent &ctx, BaseEntity &ent) : BaseEntity(ent) {
+  SolidEntity::SolidEntity(const bspFileContent &ctx, ParsedEntity *pe) {
+    FillFromParsed(pe);
+
+    std::string modelStr = AttributeStr("model");
+    if (!modelStr.empty() && modelStr[0] == '*') {
+      m_modelId = std::stoi(modelStr.substr(1));
+    } else {
+      m_modelId = 0;
+    }
+
     auto &m = ctx.models[m_modelId];
     for (int fid = m.face_id; fid < m.face_id + m.face_num; fid++) {
       auto mface = std::make_shared<Surface>();
@@ -23,5 +32,5 @@ namespace quakelib::bsp {
 
   const std::vector<SurfacePtr> &SolidEntity::Faces() { return m_faces; }
 
-  bool SolidEntity::IsWorldSPawn() { return m_classname != "worldspawn"; };
+  bool SolidEntity::IsWorldSpawn() { return m_classname == "worldspawn"; };
 } // namespace quakelib::bsp

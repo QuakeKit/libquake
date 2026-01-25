@@ -19,6 +19,15 @@ namespace quakelib::bsp {
     info = &ctx.surfaces[fsurface->texinfo_id];
     const auto &tex = ctx.miptextures[info->texture_id];
 
+    // Calculate normal from plane
+    const auto &plane = ctx.planes[fsurface->plane_id];
+    vec3f_t planeNormal = plane.normal;
+    if (fsurface->side == 1) {
+      planeNormal.x = -planeNormal.x;
+      planeNormal.y = -planeNormal.y;
+      planeNormal.z = -planeNormal.z;
+    }
+
     textureReference = &tex;
 
     const double tex_vecs[2][4] = {
@@ -29,11 +38,13 @@ namespace quakelib::bsp {
     verts.resize(fsurface->ledge_num);
     for (int i = 0; i < fsurface->ledge_num; i++) {
       int e = ctx.surfEdges[fsurface->ledge_id + i];
-      auto &v = verts[fsurface->ledge_num - i - 1];
+      auto &v = verts[i];
       if (e >= 0)
         v.point = ctx.vertices[ctx.edges[e].vertex0];
       else
         v.point = ctx.vertices[ctx.edges[-e].vertex1];
+
+      v.normal = planeNormal;
 
       for (int i = 0; i < 2; i++) {
         val = ((double)v.point.x * tex_vecs[i][0]);

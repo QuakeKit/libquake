@@ -21,6 +21,7 @@ struct QuakeMapOptions {
   Color backgroundColor = WHITE;
   Color defaultColor = WHITE;
   Color wireframeColor = BLUE;
+  float lightmapMultiplier = 1.0f;
 };
 
 struct GeneratedMapData {

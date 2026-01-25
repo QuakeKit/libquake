@@ -2,6 +2,7 @@
 
 #include "../model/quake_render_model.h" // For Options if needed, or colors
 #include <map>
+#include <quakelib/map_provider.h>
 #include <quakelib/wad/wad_manager.h>
 #include <raylib.h>
 #include <string>
@@ -19,7 +20,8 @@ public:
   // Actually, Raylib Models store a pointer to materials.
   // Ideally validating lifetime is easier if this class owns them.
   Material *BuildMaterialPool(const std::vector<std::string> &textureNames, Shader mapShader,
-                              Shader skyShader, Texture2D lightmapAtlas, const QuakeMapOptions &opts);
+                              Shader skyShader, Texture2D lightmapAtlas, const QuakeMapOptions &opts,
+                              quakelib::IMapProviderPtr provider = nullptr);
 
   quakelib::wad::QuakeWadManager &GetWadManager() { return wadMgr; }
 

@@ -138,6 +138,12 @@ namespace quakelib {
     const tue::fvec3 &Origin() const;
 
     /**
+     * @brief Sets the origin of the point entity.
+     * @param origin The new position vector.
+     */
+    void SetOrigin(const tue::fvec3 &origin) { m_origin = origin; }
+
+    /**
      * @brief Gets the angle of the point entity.
      * @return The angle in degrees.
      */
@@ -187,4 +193,9 @@ namespace quakelib {
   private:
     std::vector<std::string> m_wads; ///< List of WAD files used by the map.
   };
+
+  using EntityPtr = std::shared_ptr<Entity>;
+  using SolidEntityPtr = std::shared_ptr<SolidEntity>;
+  using PointEntityPtr = std::shared_ptr<PointEntity>;
+
 } // namespace quakelib

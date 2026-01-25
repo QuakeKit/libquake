@@ -40,8 +40,15 @@ namespace quakelib::map {
     if (m_map_file == nullptr)
       return;
 
+    std::string lower = texture;
+    std::string upper = texture;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+
     for (int i = 0; i < m_map_file->m_textures.size(); i++) {
-      if (m_map_file->m_textures[i].find(texture) != std::string::npos) {
+      const auto &texName = m_map_file->m_textures[i];
+      if (texName == lower || texName == upper || texName.find(lower) != std::string::npos ||
+          texName.find(upper) != std::string::npos) {
         this->m_textureIDTypes[i] = type;
         return;
       }
@@ -110,4 +117,4 @@ namespace quakelib::map {
       }
     }
   }
-}
+} // namespace quakelib::map

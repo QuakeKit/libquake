@@ -1,6 +1,5 @@
 #pragma once
 #include "bsp_file.h"
-#include "entity.h"
 #include <memory>
 
 namespace quakelib::bsp {

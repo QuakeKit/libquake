@@ -42,6 +42,7 @@ jobs:
       out_url: ${{ steps.create_release.outputs.upload_url }}
 
   build:
+    permissions: write-all
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]

@@ -56,7 +56,7 @@ jobs:
         run: >-
           cmake
           -DCMAKE_BUILD_TYPE=Release
-          -DQLIB_BUILD_VIEWER=ON
+          -DQLIB_BUILD_VIEWER=OFF
           -DQLIB_BUILD_TESTS=OFF
           -Bbuild
       
@@ -75,24 +75,17 @@ jobs:
                cp -R include/quakelib dist/include/
                cd dist && zip -r ../libquake-linux.zip lib include && cd ..
                
-               # Pack qviewer
-               zip -j qviewer-linux.zip build/bin/tools/qviewer
-               
           elif [ "$RUNNER_OS" == "macOS" ]; then
                echo "os=macos" >> "$GITHUB_OUTPUT"
                
                # Codesign universal binary (already built as universal)
                codesign --force -s - build/bin/libquakelib.dylib
-               codesign --force -s - build/bin/tools/qviewer
                
                # Pack library with includes
                mkdir -p dist/lib dist/include
                cp build/bin/libquakelib.dylib dist/lib/
                cp -R include/quakelib dist/include/
                cd dist && zip -r ../libquake-macos.zip lib include && cd ..
-               
-               # Pack qviewer
-               zip -j qviewer-macos.zip build/bin/tools/qviewer
                
           elif [ "$RUNNER_OS" == "Windows" ]; then
                choco install zip
@@ -104,9 +97,6 @@ jobs:
                cp build/bin/Release/quakelib.lib dist/lib/ || cp build/bin/quakelib.lib dist/lib/ || true
                cp -R include/quakelib dist/include/
                cd dist && zip -r ../libquake-win.zip lib include && cd ..
-               
-               # Pack qviewer
-               zip -j qviewer-win.zip build/bin/tools/Release/qviewer.exe || zip -j qviewer-win.zip build/bin/tools/qviewer.exe
                
           else
                echo "$RUNNER_OS not supported"
@@ -122,14 +112,4 @@ jobs:
           upload_url: ${{needs.release.outputs.out_url}}
           asset_path: ./libquake-${{ steps.setup_os.outputs.os }}.zip
           asset_name: libquake-${{ steps.setup_os.outputs.os }}.zip
-          asset_content_type: application/zip
-      
-      - name: upload qviewer artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          upload_url: ${{needs.release.outputs.out_url}}
-          asset_path: ./qviewer-${{ steps.setup_os.outputs.os }}.zip
-          asset_name: qviewer-${{ steps.setup_os.outputs.os }}.zip
           asset_content_type: application/zip

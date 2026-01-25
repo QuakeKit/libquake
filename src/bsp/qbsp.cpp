@@ -22,7 +22,7 @@ namespace quakelib::bsp {
     }
 
     std::filesystem::path p = fileName;
-    m_mapPath = string(p.replace_extension());
+    m_mapPath = p.replace_extension().string();
 
     loadLumptoVector(m_istream, m_content.header.lump[LUMP_VERTICES], m_content.vertices);
     loadLumptoVector(m_istream, m_content.header.lump[LUMP_EDGES], m_content.edges);

@@ -54,6 +54,8 @@ namespace quakelib::map {
         if (pe->type == EntityType::WORLDSPAWN) {
           this->m_worldSpawn = sent;
           parse_wad_string(sent->AttributeStr("wad"));
+          m_mapVersionStr = sent->AttributeStr("mapversion");
+          m_mapVersion = std::stoi(m_mapVersionStr);
         }
         for (auto &child : pe->children) {
           std::stringstream lines;
@@ -73,6 +75,7 @@ namespace quakelib::map {
   void QMapFile::parse_entity_planes(std::stringstream &lines, SolidMapEntity *ent) {
     Brush brush;
     for (std::string line; std::getline(lines, line);) {
+      // Remove parentheses and brackets from the line for easier parsing
       std::string chars = "()[]";
       for (unsigned int i = 0; i < chars.length(); ++i) {
         line.erase(std::remove(line.begin(), line.end(), chars[i]), line.end());
@@ -137,4 +140,4 @@ namespace quakelib::map {
     }
   }
 
-}
+} // namespace quakelib::map

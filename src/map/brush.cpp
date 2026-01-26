@@ -343,4 +343,4 @@ namespace quakelib::map {
           max[2] = vert.point[2];
       }
   }
-}
+} // namespace quakelib::map

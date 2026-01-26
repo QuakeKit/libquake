@@ -79,6 +79,13 @@ TEST_CASE("WAD - Load file", "[wad]") {
       CAPTURE(tex->width);
       CAPTURE(tex->height);
       CAPTURE(tex->type);
+      CAPTURE(tex->raw.size());
+      CAPTURE(expectedPixels);
+
+      // Verify raw data size in bytes
+      size_t rawByteSize = tex->raw.size() * sizeof(color);
+      CAPTURE(rawByteSize);
+      CHECK(rawByteSize == expectedPixels * 4);
     } else {
       // If not found, list what textures ARE available
       const auto &textures = wad->Textures();

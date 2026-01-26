@@ -193,6 +193,11 @@ struct QLibMapData {
 };
 
 API_EXPORT void *QLibMap_Load(const char *filePath, uint8_t enableCSG, uint8_t convertToOpenGL);
+API_EXPORT char **QLibMap_GetRequiredWads(void *mapPtr, uint32_t *outCount);
+API_EXPORT char **QLibMap_GetTextureNames(void *mapPtr, uint32_t *outCount);
+API_EXPORT void QLibMap_RegisterTextureSize(void *mapPtr, const char *textureName, uint32_t width,
+                                            uint32_t height);
+API_EXPORT void QLibMap_GenerateGeometry(void *mapPtr);
 API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr);
 API_EXPORT QLibMapEntityMesh *QLibMap_GetEntityMesh(void *mapPtr, uint32_t entityIndex);
 API_EXPORT void QLibMap_SetFaceType(void *mapPtr, const char *textureName, uint8_t surfaceType);

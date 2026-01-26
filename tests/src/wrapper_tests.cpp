@@ -10,6 +10,9 @@ TEST_CASE("Wrapper API - Load MAP file", "[wrapper][map]") {
     void *map = QLibMap_Load(mapPath, 1, 1);
     REQUIRE(map != nullptr);
 
+    // Generate geometry without texture sizes (UVs will be 0.0)
+    QLibMap_GenerateGeometry(map);
+
     SECTION("Export all MAP data") {
       QLibMapData *data = QLibMap_ExportAll(map);
       REQUIRE(data != nullptr);
@@ -69,16 +72,18 @@ TEST_CASE("Wrapper API - Load MAP file", "[wrapper][map]") {
         CHECK(submesh->indexCount > 0);
         CHECK(std::strlen(submesh->textureName) > 0);
 
-        CAPTURE(submesh->vertexCount);
-        CAPTURE(submesh->indexCount);
-        CAPTURE(submesh->surfaceType);
-
         // Validate texture name is set
         CHECK(submesh->textureName[0] != '\0');
 
         // Validate vertex data
         QLibVertex *firstVert = &world->vertices[0];
         CHECK(firstVert != nullptr);
+
+        // NOTE: UV coordinates will be 0.0 because the wrapper doesn't provide
+        // texture dimensions to the MAP loader. UVs require textureBounds callback
+        // which needs texture width/height from WAD files.
+        // This is a known limitation - users must calculate UVs themselves or
+        // the wrapper needs enhancement to accept WAD path/texture dimensions.
 
         // Check attributes
         CHECK(world->attributeCount > 0);
@@ -110,6 +115,8 @@ TEST_CASE("Wrapper API - Load MAP file", "[wrapper][map]") {
     void *map = QLibMap_Load(mapPath, 0, 1);
     REQUIRE(map != nullptr);
 
+    QLibMap_GenerateGeometry(map);
+
     QLibMapData *data = QLibMap_ExportAll(map);
     REQUIRE(data != nullptr);
 
@@ -123,6 +130,8 @@ TEST_CASE("Wrapper API - Load MAP file", "[wrapper][map]") {
   SECTION("Get specific entity mesh") {
     void *map = QLibMap_Load(mapPath, 1, 1);
     REQUIRE(map != nullptr);
+
+    QLibMap_GenerateGeometry(map);
 
     QLibMapEntityMesh *mesh = QLibMap_GetEntityMesh(map, 0);
     REQUIRE(mesh != nullptr);
@@ -139,11 +148,83 @@ TEST_CASE("Wrapper API - Load MAP file", "[wrapper][map]") {
     void *map = QLibMap_Load(mapPath, 1, 1);
     REQUIRE(map != nullptr);
 
+    QLibMap_GenerateGeometry(map);
+
     QLibMapEntityMesh *mesh = QLibMap_GetEntityMesh(map, 9999);
     CHECK(mesh == nullptr);
 
     QLibMap_Destroy(map);
   }
+
+  SECTION("Invalid entity index returns NULL") {
+    void *map = QLibMap_Load(mapPath, 1, 1);
+    REQUIRE(map != nullptr);
+
+    QLibMap_GenerateGeometry(map);
+
+    QLibMapEntityMesh *mesh = QLibMap_GetEntityMesh(map, 9999);
+    CHECK(mesh == nullptr);
+
+    QLibMap_Destroy(map);
+  }
+}
+
+TEST_CASE("Wrapper API - Load MAP with texture sizes for UVs", "[wrapper][map]") {
+  const char *mapPath = "tests/data/test.map";
+  const char *wadPath = "tests/data/prototype.wad";
+
+  // Load MAP file (without generating geometry yet)
+  void *map = QLibMap_Load(mapPath, 1, 1);
+  REQUIRE(map != nullptr);
+
+  // Get required WADs
+  uint32_t wadCount = 0;
+  char **wads = QLibMap_GetRequiredWads(map, &wadCount);
+  CHECK(wadCount > 0);
+  if (wads) {
+    for (uint32_t i = 0; i < wadCount; i++) {
+      QLib_Free(wads[i]);
+    }
+    QLib_Free(wads);
+  }
+
+  // Load the WAD file
+  void *wad = QLibWad_Load(wadPath, 0);
+  REQUIRE(wad != nullptr);
+
+  // Register texture size for the one texture used in test.map
+  // (In real usage, you'd register all textures from the map's required texture list)
+  QLibWadTexture *blueTexture = QLibWad_GetTexture(wad, "128_blue_3");
+  if (blueTexture) {
+    QLibMap_RegisterTextureSize(map, blueTexture->name, blueTexture->width, blueTexture->height);
+    QLibWad_FreeTexture(blueTexture);
+  }
+
+  // Now generate geometry with proper texture sizes for UV calculation
+  QLibMap_GenerateGeometry(map);
+
+  // Export and check UVs
+  QLibMapData *mapData = QLibMap_ExportAll(map);
+  REQUIRE(mapData != nullptr);
+
+  if (mapData->solidEntityCount > 0) {
+    QLibMapEntityMesh *world = &mapData->solidEntities[0];
+
+    // Check that at least some vertices have non-zero UVs now
+    bool hasNonZeroUV = false;
+    for (uint32_t i = 0; i < world->totalVertexCount && i < 10; i++) {
+      QLibVertex *v = &world->vertices[i];
+      if (v->uv.x != 0.0f || v->uv.y != 0.0f) {
+        hasNonZeroUV = true;
+        break;
+      }
+    }
+    CHECK(hasNonZeroUV);
+  }
+
+  QLibMap_FreeData(mapData);
+  QLibWad_Destroy(wad);
+  QLibMap_Destroy(map);
 }
 
 TEST_CASE("Wrapper API - Set face types", "[wrapper][map]") {
@@ -152,10 +233,9 @@ TEST_CASE("Wrapper API - Set face types", "[wrapper][map]") {
   void *map = QLibMap_Load(mapPath, 1, 1);
   REQUIRE(map != nullptr);
 
-  // Note: SetFaceType must be called before GenerateGeometry() in the actual workflow
-  // Since QLibMap_Load already calls GenerateGeometry(), this test just verifies
-  // the function doesn't crash
+  // SetFaceType should be called before GenerateGeometry()
   QLibMap_SetFaceType(map, "128_blue_3", 1);
+  QLibMap_GenerateGeometry(map);
 
   QLibMap_Destroy(map);
 }
@@ -198,11 +278,34 @@ TEST_CASE("Wrapper API - Load WAD file", "[wrapper][wad]") {
     QLibWadTexture *tex = QLibWad_GetTexture(wad, "128_blue_3");
     REQUIRE(tex != nullptr);
 
+    CAPTURE(tex->width);
+    CAPTURE(tex->height);
+    CAPTURE(tex->dataSize);
+
     CHECK(tex->width > 0);
     CHECK(tex->height > 0);
     CHECK(tex->dataSize == tex->width * tex->height * 4); // RGBA
     CHECK(tex->data != nullptr);
     CHECK(std::strcmp(tex->name, "128_blue_3") == 0);
+
+    // Verify actual data is accessible for the full dataSize
+    // Try reading the first and last bytes to ensure full allocation
+    if (tex->data != nullptr && tex->dataSize > 0) {
+      uint8_t firstByte = tex->data[0];
+      uint8_t lastByte = tex->data[tex->dataSize - 1];
+      CAPTURE(firstByte);
+      CAPTURE(lastByte);
+
+      // Count non-zero bytes to verify data is actually present
+      uint32_t nonZeroCount = 0;
+      for (uint32_t i = 0; i < tex->dataSize; i++) {
+        if (tex->data[i] != 0) {
+          nonZeroCount++;
+        }
+      }
+      CAPTURE(nonZeroCount);
+      CHECK(nonZeroCount > 0); // Should have some non-zero data
+    }
 
     QLibWad_FreeTexture(tex);
     QLibWad_Destroy(wad);

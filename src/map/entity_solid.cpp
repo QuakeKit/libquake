@@ -403,4 +403,4 @@ namespace quakelib::map {
     }
   }
 
-}
+} // namespace quakelib::map

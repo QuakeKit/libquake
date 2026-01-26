@@ -1,6 +1,7 @@
 #include "wrapper.h"
 #include <algorithm>
 #include <cstring>
+#include <map>
 #include <quakelib/bsp/qbsp_provider.h>
 #include <quakelib/map/qmap_provider.h>
 #include <quakelib/wad/wad.h>
@@ -8,6 +9,9 @@
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+// Global map for storing texture sizes per provider instance
+static std::map<void *, std::map<std::string, std::pair<int, int>>> g_providerTextureSizes;
 
 static QLibVec2 ToQLibVec2(const quakelib::fvec2 &v) { return {v[0], v[1]}; }
 
@@ -507,9 +511,72 @@ API_EXPORT void *QLibMap_Load(const char *filePath, uint8_t enableCSG, uint8_t c
     return nullptr;
   }
 
-  provider->GenerateGeometry();
+  // NOTE: Geometry generation is now separate - call QLibMap_GenerateGeometry()
+  // after registering texture sizes with QLibMap_RegisterTextureSize()
 
   return provider;
+}
+
+API_EXPORT char **QLibMap_GetRequiredWads(void *mapPtr, uint32_t *outCount) {
+  if (!mapPtr || !outCount)
+    return nullptr;
+
+  auto *provider = static_cast<quakelib::QMapProvider *>(mapPtr);
+  auto wads = provider->GetRequiredWads();
+
+  *outCount = static_cast<uint32_t>(wads.size());
+  if (wads.empty())
+    return nullptr;
+
+  return AllocStringArray(wads);
+}
+
+API_EXPORT char **QLibMap_GetTextureNames(void *mapPtr, uint32_t *outCount) {
+  if (!mapPtr || !outCount)
+    return nullptr;
+
+  auto *provider = static_cast<quakelib::QMapProvider *>(mapPtr);
+  auto textures = provider->GetTextureNames();
+
+  *outCount = static_cast<uint32_t>(textures.size());
+  if (textures.empty())
+    return nullptr;
+
+  return AllocStringArray(textures);
+}
+
+API_EXPORT void QLibMap_RegisterTextureSize(void *mapPtr, const char *textureName, uint32_t width,
+                                            uint32_t height) {
+  if (!mapPtr || !textureName)
+    return;
+
+  // Store texture sizes in the global map
+  // The callback will be set later in GenerateGeometry()
+  auto &providerTextures = g_providerTextureSizes[mapPtr];
+  providerTextures[textureName] = {static_cast<int>(width), static_cast<int>(height)};
+}
+
+API_EXPORT void QLibMap_GenerateGeometry(void *mapPtr) {
+  if (!mapPtr)
+    return;
+
+  auto *provider = static_cast<quakelib::QMapProvider *>(mapPtr);
+
+  // Set texture bounds provider before generating geometry if we have registered textures
+  // This will call RegisterTextureBounds() which populates the internal map
+  auto it = g_providerTextureSizes.find(mapPtr);
+  if (it != g_providerTextureSizes.end() && !it->second.empty()) {
+    provider->SetTextureBoundsProvider([mapPtr](const std::string &name) -> std::pair<int, int> {
+      auto &textureSizes = g_providerTextureSizes[mapPtr];
+      auto it = textureSizes.find(name);
+      if (it != textureSizes.end()) {
+        return it->second;
+      }
+      return {0, 0};
+    });
+  }
+
+  provider->GenerateGeometry();
 }
 
 API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr) {
@@ -545,6 +612,15 @@ API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr) {
       std::memset(&outMesh, 0, sizeof(QLibMapEntityMesh));
 
       SafeStrCopy(outMesh.className, entity->ClassName(), 64);
+
+      // Set bounds (cast to SolidMapEntity to access bounds methods)
+      auto mapEntity = std::static_pointer_cast<quakelib::map::SolidMapEntity>(entity);
+      auto center = mapEntity->GetCenter();
+      auto boundsMin = mapEntity->GetMin();
+      auto boundsMax = mapEntity->GetMax();
+      outMesh.center = {center.x(), center.y(), center.z()};
+      outMesh.boundsMin = {boundsMin.x(), boundsMin.y(), boundsMin.z()};
+      outMesh.boundsMax = {boundsMax.x(), boundsMax.y(), boundsMax.z()};
 
       // Get meshes
       auto meshes = provider->GetEntityMeshes(entity);
@@ -653,6 +729,15 @@ API_EXPORT QLibMapEntityMesh *QLibMap_GetEntityMesh(void *mapPtr, uint32_t entit
   std::memset(outMesh, 0, sizeof(QLibMapEntityMesh));
 
   SafeStrCopy(outMesh->className, entity->ClassName(), 64);
+
+  // Set bounds (cast to SolidMapEntity to access bounds methods)
+  auto mapEntity = std::static_pointer_cast<quakelib::map::SolidMapEntity>(entity);
+  auto center = mapEntity->GetCenter();
+  auto boundsMin = mapEntity->GetMin();
+  auto boundsMax = mapEntity->GetMax();
+  outMesh->center = {center.x(), center.y(), center.z()};
+  outMesh->boundsMin = {boundsMin.x(), boundsMin.y(), boundsMin.z()};
+  outMesh->boundsMax = {boundsMax.x(), boundsMax.y(), boundsMax.z()};
 
   // Count totals
   uint32_t totalVerts = 0;
@@ -779,5 +864,9 @@ API_EXPORT void QLibMap_FreeData(QLibMapData *data) {
 API_EXPORT void QLibMap_Destroy(void *mapPtr) {
   if (!mapPtr)
     return;
+
+  // Clean up texture sizes map for this provider
+  g_providerTextureSizes.erase(mapPtr);
+
   delete static_cast<quakelib::QMapProvider *>(mapPtr);
 }

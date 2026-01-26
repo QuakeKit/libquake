@@ -55,7 +55,9 @@ namespace quakelib::map {
           this->m_worldSpawn = sent;
           parse_wad_string(sent->AttributeStr("wad"));
           m_mapVersionStr = sent->AttributeStr("mapversion");
-          m_mapVersion = std::stoi(m_mapVersionStr);
+          if (!m_mapVersionStr.empty()) {
+            m_mapVersion = std::stoi(m_mapVersionStr);
+          }
         }
         for (auto &child : pe->children) {
           std::stringstream lines;

@@ -342,5 +342,10 @@ namespace quakelib::map {
         if (vert.point[2] > max[2])
           max[2] = vert.point[2];
       }
+
+    // Cache non-solid status: check first face (all faces in a brush have same type)
+    if (!m_faces.empty()) {
+      m_isNonSolid = (m_faces[0]->Type() != MapSurface::SOLID);
+    }
   }
 } // namespace quakelib::map

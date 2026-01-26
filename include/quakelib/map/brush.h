@@ -56,6 +56,12 @@ namespace quakelib::map {
     bool IsBlockVolume() const { return m_isBlockVolume; }
 
     /**
+     * @brief Checks if this brush contains only non-solid faces (CLIP/SKIP/NODRAW).
+     * @return True if all faces are non-solid, false otherwise.
+     */
+    bool IsNonSolidBrush() const { return m_isNonSolid; }
+
+    /**
      * @brief Gets the faces that make up this brush.
      * @return A vector of pointers to the faces.
      */
@@ -87,6 +93,7 @@ namespace quakelib::map {
     static void splitFace(const FacePtr &in, const FacePtr &plane, FacePtr &front, FacePtr &back);
 
     bool m_isBlockVolume = false;
+    bool m_isNonSolid = false;
 
     friend class QMapFile;
     friend class SolidMapEntity;

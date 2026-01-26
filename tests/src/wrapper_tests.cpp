@@ -362,3 +362,89 @@ TEST_CASE("Wrapper API - NULL safety", "[wrapper]") {
     CHECK(wad == nullptr);
   }
 }
+
+TEST_CASE("Wrapper API - Lightmap Generation", "[wrapper][map][lightmap]") {
+  const char *mapPath = "tests/data/test.map";
+
+  void *map = QLibMap_Load(mapPath, 1, 1);
+  REQUIRE(map != nullptr);
+
+  // Generate geometry
+  QLibMap_GenerateGeometry(map);
+
+  SECTION("Generate lightmaps with valid atlas size") {
+    // Generate 512x512 atlas with 16 luxel size
+    int success = QLibMap_GenerateLightmaps(map, 512, 512, 16.0f);
+    CHECK(success == 1);
+
+    // Get lightmap data
+    QLibMapLightmapData *lightmapData = QLibMap_GetLightmapData(map);
+    REQUIRE(lightmapData != nullptr);
+
+    CHECK(lightmapData->width == 512);
+    CHECK(lightmapData->height == 512);
+    CHECK(lightmapData->dataSize == 512 * 512 * 4); // RGBA
+    CHECK(lightmapData->data != nullptr);
+
+    // Free lightmap data
+    QLibMap_FreeLightmapData(lightmapData);
+  }
+
+  SECTION("Generate lightmaps with too small atlas") {
+    // Try with very small atlas (might fail to pack)
+    int success = QLibMap_GenerateLightmaps(map, 64, 64, 16.0f);
+    // This might succeed or fail depending on map complexity
+    // Just verify the API doesn't crash
+    if (success) {
+      QLibMapLightmapData *lightmapData = QLibMap_GetLightmapData(map);
+      if (lightmapData != nullptr) {
+        QLibMap_FreeLightmapData(lightmapData);
+      }
+    }
+  }
+
+  SECTION("Calculate lighting with point lights") {
+    // Generate atlas first
+    int success = QLibMap_GenerateLightmaps(map, 512, 512, 16.0f);
+    REQUIRE(success == 1);
+
+    // Define some test lights
+    QLibMapLight lights[2];
+    lights[0].position = {128.0f, 128.0f, 128.0f};
+    lights[0].radius = 256.0f;
+    lights[0].color = {1.0f, 0.9f, 0.8f};
+
+    lights[1].position = {-128.0f, -128.0f, 128.0f};
+    lights[1].radius = 200.0f;
+    lights[1].color = {0.5f, 0.5f, 1.0f};
+
+    QLibVec3 ambient = {0.1f, 0.1f, 0.15f};
+
+    // Calculate lighting (should not crash)
+    QLibMap_CalculateLighting(map, lights, 2, ambient);
+
+    // Get lightmap data with baked lighting
+    QLibMapLightmapData *lightmapData = QLibMap_GetLightmapData(map);
+    REQUIRE(lightmapData != nullptr);
+    CHECK(lightmapData->data != nullptr);
+    CHECK(lightmapData->dataSize > 0);
+
+    QLibMap_FreeLightmapData(lightmapData);
+  }
+
+  SECTION("Auto-generate lightmaps from MAP light entities") {
+    // This should work even if there are no light entities
+    QLibVec3 ambient = {0.1f, 0.1f, 0.15f};
+    int success = QLibMap_GenerateLightmapsAuto(map, 512, 512, 16.0f, ambient);
+    CHECK(success == 1);
+
+    // Should have generated lightmap data
+    QLibMapLightmapData *lightmapData = QLibMap_GetLightmapData(map);
+    REQUIRE(lightmapData != nullptr);
+    CHECK(lightmapData->data != nullptr);
+
+    QLibMap_FreeLightmapData(lightmapData);
+  }
+
+  QLibMap_Destroy(map);
+}

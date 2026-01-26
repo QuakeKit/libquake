@@ -21,9 +21,21 @@ namespace quakelib::map {
       m_max = m_brushes[0].max;
     }
     for (auto &b1 : m_brushes) {
+      // Skip CSG for non-solid brushes (CLIP/SKIP/NODRAW) - export them as-is
+      if (b1.IsNonSolidBrush()) {
+        m_clippedBrushes.push_back(b1);
+        b1.GetBiggerBBox(m_min, m_max);
+        continue;
+      }
+
       auto cpBrush = b1;
       for (auto &b2 : m_brushes) {
         if (&b1 == &b2 || b2.m_faces.empty()) {
+          continue;
+        }
+
+        // Don't clip against non-solid brushes
+        if (b2.IsNonSolidBrush()) {
           continue;
         }
 

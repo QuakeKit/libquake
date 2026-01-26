@@ -192,12 +192,33 @@ struct QLibMapData {
   uint32_t requiredWadCount;
 };
 
+struct QLibMapLightmapData {
+  uint32_t width;    // Atlas width in pixels
+  uint32_t height;   // Atlas height in pixels
+  uint32_t dataSize; // Size of RGBA data
+  uint8_t *data;     // RGBA lightmap atlas data
+};
+
+struct QLibMapLight {
+  QLibVec3 position; // World position of the light
+  float radius;      // Light radius/range
+  QLibVec3 color;    // RGB color (0-1 range)
+};
+
 API_EXPORT void *QLibMap_Load(const char *filePath, uint8_t enableCSG, uint8_t convertToOpenGL);
 API_EXPORT char **QLibMap_GetRequiredWads(void *mapPtr, uint32_t *outCount);
 API_EXPORT char **QLibMap_GetTextureNames(void *mapPtr, uint32_t *outCount);
 API_EXPORT void QLibMap_RegisterTextureSize(void *mapPtr, const char *textureName, uint32_t width,
                                             uint32_t height);
 API_EXPORT void QLibMap_GenerateGeometry(void *mapPtr);
+API_EXPORT int QLibMap_GenerateLightmaps(void *mapPtr, uint32_t atlasWidth, uint32_t atlasHeight,
+                                         float luxelSize);
+API_EXPORT void QLibMap_CalculateLighting(void *mapPtr, const QLibMapLight *lights, uint32_t lightCount,
+                                          QLibVec3 ambientColor);
+API_EXPORT int QLibMap_GenerateLightmapsAuto(void *mapPtr, uint32_t atlasWidth, uint32_t atlasHeight,
+                                             float luxelSize, QLibVec3 ambientColor);
+API_EXPORT QLibMapLightmapData *QLibMap_GetLightmapData(void *mapPtr);
+API_EXPORT void QLibMap_FreeLightmapData(QLibMapLightmapData *data);
 API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr);
 API_EXPORT QLibMapEntityMesh *QLibMap_GetEntityMesh(void *mapPtr, uint32_t entityIndex);
 API_EXPORT void QLibMap_SetFaceType(void *mapPtr, const char *textureName, uint8_t surfaceType);

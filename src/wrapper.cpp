@@ -2,7 +2,9 @@
 #include <algorithm>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <quakelib/bsp/qbsp_provider.h>
+#include <quakelib/map/lightmap_generator.h>
 #include <quakelib/map/qmap_provider.h>
 #include <quakelib/wad/wad.h>
 
@@ -579,6 +581,169 @@ API_EXPORT void QLibMap_GenerateGeometry(void *mapPtr) {
   provider->GenerateGeometry();
 }
 
+// Global storage for lightmap generators (one per map)
+static std::map<void *, std::unique_ptr<quakelib::map::LightmapGenerator>> g_lightmapGenerators;
+
+API_EXPORT int QLibMap_GenerateLightmaps(void *mapPtr, uint32_t atlasWidth, uint32_t atlasHeight,
+                                         float luxelSize) {
+  if (!mapPtr)
+    return 0;
+
+  auto *provider = static_cast<quakelib::QMapProvider *>(mapPtr);
+  auto baseEntities = provider->GetSolidEntities();
+
+  // Convert base entities to map entities
+  std::vector<quakelib::map::SolidEntityPtr> entities;
+  for (const auto &e : baseEntities) {
+    auto mapEntity = std::dynamic_pointer_cast<quakelib::map::SolidMapEntity>(e);
+    if (mapEntity) {
+      entities.push_back(mapEntity);
+    }
+  }
+
+  // Create lightmap generator
+  auto generator = std::make_unique<quakelib::map::LightmapGenerator>(atlasWidth, atlasHeight, luxelSize);
+
+  // Pack faces into atlas (this also updates vertex lightmap_uv to normalized atlas coordinates)
+  if (!generator->Pack(entities)) {
+    return 0; // Atlas too small
+  }
+
+  // Store generator for later retrieval
+  g_lightmapGenerators[mapPtr] = std::move(generator);
+
+  return 1; // Success
+}
+
+API_EXPORT void QLibMap_CalculateLighting(void *mapPtr, const QLibMapLight *lights, uint32_t lightCount,
+                                          QLibVec3 ambientColor) {
+  if (!mapPtr || !lights)
+    return;
+
+  auto it = g_lightmapGenerators.find(mapPtr);
+  if (it == g_lightmapGenerators.end())
+    return;
+
+  auto *generator = it->second.get();
+
+  // Convert QLibMapLight array to LightmapGenerator::Light vector
+  std::vector<quakelib::map::LightmapGenerator::Light> internalLights;
+  internalLights.reserve(lightCount);
+
+  for (uint32_t i = 0; i < lightCount; i++) {
+    quakelib::map::LightmapGenerator::Light light;
+    light.pos = {lights[i].position.x, lights[i].position.y, lights[i].position.z};
+    light.radius = lights[i].radius;
+    light.color = {lights[i].color.x, lights[i].color.y, lights[i].color.z};
+    internalLights.push_back(light);
+  }
+
+  // Convert ambient color
+  fvec3 ambient = {ambientColor.x, ambientColor.y, ambientColor.z};
+
+  // Calculate lighting
+  generator->CalculateLighting(internalLights, ambient);
+}
+
+API_EXPORT int QLibMap_GenerateLightmapsAuto(void *mapPtr, uint32_t atlasWidth, uint32_t atlasHeight,
+                                             float luxelSize, QLibVec3 ambientColor) {
+  if (!mapPtr)
+    return 0;
+
+  // Step 1: Generate lightmap atlas
+  if (!QLibMap_GenerateLightmaps(mapPtr, atlasWidth, atlasHeight, luxelSize)) {
+    return 0; // Atlas too small
+  }
+
+  // Step 2: Extract light entities from the map
+  auto *provider = static_cast<quakelib::QMapProvider *>(mapPtr);
+  auto pointEntities = provider->GetPointEntities();
+
+  std::vector<QLibMapLight> lights;
+  lights.reserve(pointEntities.size());
+
+  for (const auto &entity : pointEntities) {
+    if (entity->ClassName() != "light")
+      continue;
+
+    QLibMapLight light;
+
+    // Get origin (position)
+    try {
+      fvec3 origin = entity->AttributeVec3("origin");
+      light.position = {origin[0], origin[1], origin[2]};
+    } catch (...) {
+      continue; // Skip if origin parse fails
+    }
+
+    // Get light intensity (radius)
+    try {
+      light.radius = entity->AttributeFloat("light");
+      if (light.radius <= 0.0f)
+        light.radius = 200.0f; // Default if invalid
+    } catch (...) {
+      light.radius = 200.0f; // Default radius
+    }
+
+    // Get color
+    try {
+      std::string colorStr = entity->AttributeStr("_color");
+      float r, g, b;
+      if (sscanf(colorStr.c_str(), "%f %f %f", &r, &g, &b) == 3) {
+        light.color = {r / 255.0f, g / 255.0f, b / 255.0f};
+      } else {
+        light.color = {1.0f, 1.0f, 1.0f}; // Default white
+      }
+    } catch (...) {
+      light.color = {1.0f, 1.0f, 1.0f}; // Default white
+    }
+
+    lights.push_back(light);
+  }
+
+  // Step 3: Calculate lighting if we found any lights
+  if (!lights.empty()) {
+    QLibMap_CalculateLighting(mapPtr, lights.data(), static_cast<uint32_t>(lights.size()), ambientColor);
+  }
+
+  return 1; // Success
+}
+
+API_EXPORT QLibMapLightmapData *QLibMap_GetLightmapData(void *mapPtr) {
+  if (!mapPtr)
+    return nullptr;
+
+  auto it = g_lightmapGenerators.find(mapPtr);
+  if (it == g_lightmapGenerators.end())
+    return nullptr;
+
+  auto *generator = it->second.get();
+  const auto &atlasData = generator->GetAtlasData();
+
+  auto *data = (QLibMapLightmapData *)QLib_Malloc(sizeof(QLibMapLightmapData));
+  data->width = generator->GetWidth();
+  data->height = generator->GetHeight();
+  data->dataSize = static_cast<uint32_t>(atlasData.size());
+
+  if (data->dataSize > 0) {
+    data->data = (uint8_t *)QLib_Malloc(data->dataSize);
+    std::memcpy(data->data, atlasData.data(), data->dataSize);
+  } else {
+    data->data = nullptr;
+  }
+
+  return data;
+}
+
+API_EXPORT void QLibMap_FreeLightmapData(QLibMapLightmapData *data) {
+  if (!data)
+    return;
+
+  if (data->data)
+    QLib_Free(data->data);
+  QLib_Free(data);
+}
+
 API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr) {
   if (!mapPtr)
     return nullptr;
@@ -867,6 +1032,9 @@ API_EXPORT void QLibMap_Destroy(void *mapPtr) {
 
   // Clean up texture sizes map for this provider
   g_providerTextureSizes.erase(mapPtr);
+
+  // Clean up lightmap generator for this provider
+  g_lightmapGenerators.erase(mapPtr);
 
   delete static_cast<quakelib::QMapProvider *>(mapPtr);
 }

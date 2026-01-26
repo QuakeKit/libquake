@@ -797,6 +797,517 @@ Destroy MAP handle.
 void QLibMap_Destroy(void* mapPtr);
 ```
 
+### Lightmap API
+
+The lightmap API provides functions for generating and exporting lightmap atlases from MAP files. This is useful for baking lighting information into a texture atlas that can be used during rendering.
+
+#### QLibMapLightmapData
+
+Structure containing lightmap atlas data.
+
+```c
+struct QLibMapLightmapData {
+    uint32_t width;         // Atlas width in pixels
+    uint32_t height;        // Atlas height in pixels
+    uint32_t dataSize;      // Size of data array (width * height * 4)
+    uint8_t* data;          // RGBA texture data (tightly packed)
+};
+```
+
+**Memory Layout:**
+```
++--------+--------+----------+---------+
+| width  | height | dataSize |  data*  |
+|4 bytes |4 bytes | 4 bytes  | 8 bytes |
++--------+--------+----------+---------+
+Total: 20 bytes (32-bit) or 24 bytes (64-bit)
+```
+
+#### QLibMapLight
+
+Structure defining a point light for lightmap calculation.
+
+```c
+struct QLibMapLight {
+    QLibVec3 position;      // World position of the light
+    float radius;           // Light radius/range
+    QLibVec3 color;         // RGB color (0-1 range)
+};
+```
+
+**Memory Layout:**
+```
++----------+--------+--------+
+| position | radius | color  |
+| 12 bytes |4 bytes |12 bytes|
++----------+--------+--------+
+Total: 28 bytes
+```
+
+**Example:**
+```c
+QLibMapLight light;
+light.position = (QLibVec3){128.0f, 64.0f, 32.0f};
+light.radius = 256.0f;
+light.color = (QLibVec3){1.0f, 0.9f, 0.7f};  // Warm white
+```
+
+#### QLibMap_GenerateLightmaps
+
+Generate lightmap atlas for a MAP file. This packs all faces into a lightmap atlas and updates vertex `lightmapUV` coordinates to normalized (0-1) atlas space.
+
+```c
+int QLibMap_GenerateLightmaps(void* mapPtr, 
+                              uint32_t atlasWidth, 
+                              uint32_t atlasHeight,
+                              float luxelSize);
+```
+
+**Parameters:**
+- `mapPtr`: MAP handle from `QLibMap_Load`
+- `atlasWidth`: Width of lightmap atlas in pixels (e.g., 512, 1024, 2048)
+- `atlasHeight`: Height of lightmap atlas in pixels
+- `luxelSize`: Size of each lightmap texel in world units (typical: 16.0)
+
+**Returns:** 
+- `1` on success (all faces packed successfully)
+- `0` on failure (atlas too small to fit all faces)
+
+**Notes:**
+- Call this after `QLibMap_GenerateGeometry()` but before exporting mesh data
+- Vertex `lightmapUV` fields are updated to normalized atlas coordinates
+- Smaller `luxelSize` values create higher resolution lightmaps but require more atlas space
+- If packing fails, increase atlas size or luxel size
+
+**Example:**
+```c
+void* map = QLibMap_Load("maps/test.map", 1, 1);
+QLibMap_GenerateGeometry(map);
+
+// Generate 1024x1024 lightmap atlas with 16-unit luxels
+if (QLibMap_GenerateLightmaps(map, 1024, 1024, 16.0f)) {
+    printf("Lightmap atlas generated successfully\n");
+    
+    // Export atlas texture
+    QLibMapLightmapData* lightmap = QLibMap_GetLightmapData(map);
+    if (lightmap) {
+        printf("Atlas size: %ux%u\n", lightmap->width, lightmap->height);
+        printf("Data size: %u bytes\n", lightmap->dataSize);
+        
+        // Upload RGBA data to GPU texture
+        // upload_texture(lightmap->data, lightmap->width, lightmap->height);
+        
+        QLibMap_FreeLightmapData(lightmap);
+    }
+} else {
+    fprintf(stderr, "Failed to pack lightmaps - atlas too small\n");
+}
+
+QLibMap_Destroy(map);
+```
+
+#### QLibMap_GenerateLightmapsAuto
+
+Convenience function that automatically extracts light entities from the MAP file and bakes lighting. This is a shortcut that combines `QLibMap_GenerateLightmaps()` + light extraction + `QLibMap_CalculateLighting()`.
+
+```c
+int QLibMap_GenerateLightmapsAuto(void* mapPtr,
+                                  uint32_t atlasWidth,
+                                  uint32_t atlasHeight,
+                                  float luxelSize,
+                                  QLibVec3 ambientColor);
+```
+
+**Parameters:**
+- `mapPtr`: MAP handle from `QLibMap_Load`
+- `atlasWidth`: Width of lightmap atlas in pixels
+- `atlasHeight`: Height of lightmap atlas in pixels
+- `luxelSize`: Size of each lightmap texel in world units
+- `ambientColor`: Ambient light color in RGB (0-1 range)
+
+**Returns:** 
+- `1` on success
+- `0` on failure (atlas too small)
+
+**Notes:**
+- Extracts all "light" entities from MAP file
+- Reads position from "origin" attribute
+- Reads radius from "light" attribute (default: 200.0)
+- Reads color from "_color" attribute as "R G B" in 0-255 range (default: white)
+- If no light entities found, only generates atlas without baking lighting
+- This is the simplest way to get fully baked lightmaps
+
+**Example:**
+```c
+void* map = QLibMap_Load("maps/test.map", 1, 1);
+QLibMap_GenerateGeometry(map);
+
+// One-shot lightmap generation with automatic light extraction
+QLibVec3 ambient = {0.1f, 0.1f, 0.15f};
+if (QLibMap_GenerateLightmapsAuto(map, 2048, 2048, 16.0f, ambient)) {
+    printf("Lightmaps baked successfully!\n");
+    
+    QLibMapLightmapData* lightmap = QLibMap_GetLightmapData(map);
+    // Use lightmap...
+    QLibMap_FreeLightmapData(lightmap);
+} else {
+    fprintf(stderr, "Failed to generate lightmaps\n");
+}
+
+QLibMap_Destroy(map);
+```
+
+**Typical Quake MAP Light Entities:**
+```
+{
+"classname" "light"
+"origin" "256 128 192"
+"light" "300"
+"_color" "255 220 180"
+}
+```
+
+#### QLibMap_CalculateLighting
+
+Calculate baked lighting for the lightmap atlas using point lights.
+
+```c
+void QLibMap_CalculateLighting(void* mapPtr,
+                               const QLibMapLight* lights,
+                               uint32_t lightCount,
+                               QLibVec3 ambientColor);
+```
+
+**Parameters:**
+- `mapPtr`: MAP handle with generated lightmaps
+- `lights`: Array of point lights
+- `lightCount`: Number of lights in the array
+- `ambientColor`: Ambient light color in RGB (0-1 range)
+
+**Notes:**
+- Must call `QLibMap_GenerateLightmaps()` first
+- Uses simple diffuse lighting with distance attenuation
+- Each light has position, radius, and color
+- Formula: `attenuation = (1 - distance/radius)²`
+- No shadow casting (future enhancement)
+- Updates the atlas data internally
+
+**Example:**
+```c
+void* map = QLibMap_Load("maps/test.map", 1, 1);
+QLibMap_GenerateGeometry(map);
+
+// Generate atlas
+QLibMap_GenerateLightmaps(map, 1024, 1024, 16.0f);
+
+// Define lights
+QLibMapLight lights[3];
+
+// Red light at origin
+lights[0].position = (QLibVec3){0.0f, 0.0f, 128.0f};
+lights[0].radius = 256.0f;
+lights[0].color = (QLibVec3){1.0f, 0.2f, 0.2f};
+
+// Green light
+lights[1].position = (QLibVec3){256.0f, 0.0f, 128.0f};
+lights[1].radius = 200.0f;
+lights[1].color = (QLibVec3){0.2f, 1.0f, 0.2f};
+
+// Blue light
+lights[2].position = (QLibVec3){128.0f, 256.0f, 128.0f};
+lights[2].radius = 180.0f;
+lights[2].color = (QLibVec3){0.2f, 0.2f, 1.0f};
+
+// Dark ambient
+QLibVec3 ambient = {0.1f, 0.1f, 0.15f};
+
+// Calculate lighting
+QLibMap_CalculateLighting(map, lights, 3, ambient);
+
+// Export baked lightmap
+QLibMapLightmapData* lightmap = QLibMap_GetLightmapData(map);
+// ... use lightmap data ...
+QLibMap_FreeLightmapData(lightmap);
+
+QLibMap_Destroy(map);
+```
+
+#### QLibMap_GetLightmapData
+
+Export the generated lightmap atlas texture data.
+
+```c
+QLibMapLightmapData* QLibMap_GetLightmapData(void* mapPtr);
+```
+
+**Parameters:**
+- `mapPtr`: MAP handle with generated lightmaps
+
+**Returns:** 
+- Pointer to lightmap data structure
+- `NULL` if no lightmaps have been generated
+
+**Notes:**
+- Must call `QLibMap_GenerateLightmaps()` first
+- Optionally call `QLibMap_CalculateLighting()` for baked lighting
+- The returned data is a copy and must be freed with `QLibMap_FreeLightmapData()`
+- Texture data is RGBA format (4 bytes per pixel)
+- Without `CalculateLighting()`, returns a debug checkerboard pattern
+
+#### QLibMap_FreeLightmapData
+
+Free lightmap atlas data.
+
+```c
+void QLibMap_FreeLightmapData(QLibMapLightmapData* lightmapData);
+```
+
+**Parameters:**
+- `lightmapData`: Lightmap data from `QLibMap_GetLightmapData()`
+
+### Complete MAP + Lightmap Example
+
+#### Option 1: Automatic Light Extraction (Recommended)
+
+```c
+#include "wrapper.h"
+#include <stdio.h>
+
+void load_map_with_auto_lighting(const char* mapPath) {
+    // Load MAP file
+    void* map = QLibMap_Load(mapPath, 1, 1);
+    if (!map) {
+        fprintf(stderr, "Failed to load MAP\n");
+        return;
+    }
+    
+    // Register texture sizes for proper UV calculation
+    const char* textures[] = {"brick", "metal", "wood"};
+    for (int i = 0; i < 3; i++) {
+        QLibMap_RegisterTextureSize(map, textures[i], 128, 128);
+    }
+    
+    // Generate geometry (CSG + mesh generation)
+    QLibMap_GenerateGeometry(map);
+    
+    // One-shot lightmap generation with automatic light extraction
+    QLibVec3 ambient = {0.12f, 0.12f, 0.15f};
+    if (!QLibMap_GenerateLightmapsAuto(map, 2048, 2048, 16.0f, ambient)) {
+        fprintf(stderr, "Failed to generate lightmaps\n");
+        QLibMap_Destroy(map);
+        return;
+    }
+    
+    printf("Lightmaps baked automatically from MAP light entities!\n");
+    
+    // Export lightmap atlas
+    QLibMapLightmapData* lightmap = QLibMap_GetLightmapData(map);
+    if (lightmap) {
+        printf("Baked lightmap: %ux%u (%u bytes)\n",
+               lightmap->width, lightmap->height, lightmap->dataSize);
+        
+        // Upload to GPU or save to file
+        QLibMap_FreeLightmapData(lightmap);
+    }
+    
+    // Export geometry
+    QLibMapData* data = QLibMap_ExportAll(map);
+    if (data) {
+        // Process entities...
+        QLibMap_FreeData(data);
+    }
+    
+    QLibMap_Destroy(map);
+}
+```
+
+#### Option 2: Manual Light Setup
+
+```c
+#include "wrapper.h"
+#include <stdio.h>
+
+void load_map_with_baked_lighting(const char* mapPath) {
+    // Load MAP file
+    void* map = QLibMap_Load(mapPath, 1, 1);
+    if (!map) {
+        fprintf(stderr, "Failed to load MAP\n");
+        return;
+    }
+    
+    // Step 1: Register texture sizes for proper UV calculation
+    const char* textures[] = {"brick", "metal", "wood"};
+    for (int i = 0; i < 3; i++) {
+        QLibMap_RegisterTextureSize(map, textures[i], 128, 128);
+    }
+    
+    // Step 2: Generate geometry (CSG + mesh generation)
+    QLibMap_GenerateGeometry(map);
+    
+    // Step 3: Generate lightmap atlas
+    if (!QLibMap_GenerateLightmaps(map, 2048, 2048, 16.0f)) {
+        fprintf(stderr, "Failed to pack lightmaps\n");
+        QLibMap_Destroy(map);
+        return;
+    }
+    
+    // Step 4: Set up lights for baking
+    QLibMapLight lights[2];
+    
+    // Main overhead light
+    lights[0].position = (QLibVec3){256.0f, 256.0f, 192.0f};
+    lights[0].radius = 400.0f;
+    lights[0].color = (QLibVec3){1.0f, 0.95f, 0.8f};  // Warm white
+    
+    // Accent light
+    lights[1].position = (QLibVec3){64.0f, 64.0f, 128.0f};
+    lights[1].radius = 200.0f;
+    lights[1].color = (QLibVec3){0.3f, 0.5f, 1.0f};   // Blue
+    
+    QLibVec3 ambient = {0.12f, 0.12f, 0.15f};  // Dark blue ambient
+    
+    // Step 5: Bake lighting into atlas
+    QLibMap_CalculateLighting(map, lights, 2, ambient);
+    
+    // Step 6: Export lightmap atlas
+    QLibMapLightmapData* lightmap = QLibMap_GetLightmapData(map);
+    if (lightmap) {
+        printf("Baked lightmap: %ux%u (%u bytes)\n",
+               lightmap->width, lightmap->height, lightmap->dataSize);
+        
+        // Save to file or upload to GPU
+        // save_texture("lightmap.png", lightmap->data, lightmap->width, lightmap->height);
+        
+        QLibMap_FreeLightmapData(lightmap);
+    }
+    
+    // Step 7: Export geometry with baked lightmap UVs
+    QLibMapData* data = QLibMap_ExportAll(map);
+    if (data) {
+        for (uint32_t i = 0; i < data->solidEntityCount; i++) {
+            QLibMapEntityMesh* entity = &data->solidEntities[i];
+            
+            printf("Entity %u: %s\n", i, entity->className);
+            printf("  Vertices: %u\n", entity->totalVertexCount);
+            
+            // Each vertex has:
+            // - v->uv: diffuse texture coordinates
+            // - v->lightmapUV: normalized lightmap atlas coordinates
+            
+            // Upload mesh to GPU with both UV sets
+            // create_mesh(entity->vertices, entity->totalVertexCount,
+            //             entity->indices, entity->totalIndexCount);
+        }
+        
+        QLibMap_FreeData(data);
+    }
+    
+    QLibMap_Destroy(map);
+}
+```
+
+### Extracting Lights from MAP Entities
+
+You can extract light positions from point entities in the MAP file:
+
+```c
+void extract_lights_from_map(void* mapPtr, QLibMapLight** outLights, uint32_t* outCount) {
+    QLibMapData* data = QLibMap_ExportAll(mapPtr);
+    if (!data) return;
+    
+    // Count "light" entities
+    uint32_t lightCount = 0;
+    for (uint32_t i = 0; i < data->pointEntityCount; i++) {
+        if (strcmp(data->pointEntities[i].className, "light") == 0) {
+            lightCount++;
+        }
+    }
+    
+    if (lightCount == 0) {
+        QLibMap_FreeData(data);
+        return;
+    }
+    
+    // Allocate lights array
+    QLibMapLight* lights = malloc(sizeof(QLibMapLight) * lightCount);
+    uint32_t index = 0;
+    
+    // Extract light data
+    for (uint32_t i = 0; i < data->pointEntityCount; i++) {
+        QLibMapPointEntity* entity = &data->pointEntities[i];
+        if (strcmp(entity->className, "light") != 0) continue;
+        
+        // Position from origin
+        lights[index].position = entity->origin;
+        
+        // Parse attributes for radius and color
+        lights[index].radius = 200.0f;  // Default
+        lights[index].color = (QLibVec3){1.0f, 1.0f, 1.0f};  // Default white
+        
+        for (uint32_t j = 0; j < entity->attributeCount; j++) {
+            if (strcmp(entity->attributeKeys[j], "light") == 0) {
+                // Light intensity (use as radius)
+                lights[index].radius = atof(entity->attributeValues[j]);
+            }
+            else if (strcmp(entity->attributeKeys[j], "_color") == 0) {
+                // Parse "R G B" format
+                float r, g, b;
+                if (sscanf(entity->attributeValues[j], "%f %f %f", &r, &g, &b) == 3) {
+                    lights[index].color = (QLibVec3){r / 255.0f, g / 255.0f, b / 255.0f};
+                }
+            }
+        }
+        
+        index++;
+    }
+    
+    *outLights = lights;
+    *outCount = lightCount;
+    
+    QLibMap_FreeData(data);
+}
+```
+
+### Lightmap Usage in Shaders
+
+When rendering with lightmaps, use the following approach:
+
+**Vertex Shader:**
+```glsl
+layout(location = 0) in vec3 aPosition;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUV;           // Diffuse texture UV
+layout(location = 3) in vec2 aLightmapUV;   // Lightmap atlas UV
+
+out vec2 vUV;
+out vec2 vLightmapUV;
+
+void main() {
+    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vUV = aUV;
+    vLightmapUV = aLightmapUV;
+}
+```
+
+**Fragment Shader:**
+```glsl
+in vec2 vUV;
+in vec2 vLightmapUV;
+
+uniform sampler2D uDiffuseTexture;
+uniform sampler2D uLightmapTexture;
+
+out vec4 FragColor;
+
+void main() {
+    vec4 diffuse = texture(uDiffuseTexture, vUV);
+    vec4 lightmap = texture(uLightmapTexture, vLightmapUV);
+    
+    // Multiply diffuse by lightmap for baked lighting
+    FragColor = diffuse * lightmap;
+}
+```
+
 ### Complete MAP Example
 
 ```c

@@ -73,7 +73,7 @@ jobs:
                # Pack library
                mkdir -p dist/lib dist/include
                cp build/bin/libquakelib.so dist/lib/
-               cp -R include/quakelib dist/include/
+               cp -r include/quakelib dist/include/
                cd dist && zip -r ../libquake-linux.zip lib include && cd ..
                
           elif [ "$RUNNER_OS" == "macOS" ]; then
@@ -85,19 +85,29 @@ jobs:
                # Pack library with includes
                mkdir -p dist/lib dist/include
                cp build/bin/libquakelib.dylib dist/lib/
-               cp -R include/quakelib dist/include/
+               cp -r include/quakelib dist/include/
                cd dist && zip -r ../libquake-macos.zip lib include && cd ..
                
           elif [ "$RUNNER_OS" == "Windows" ]; then
-               choco install zip
                echo "os=win" >> "$GITHUB_OUTPUT"
                
-               # Pack library with includes
+               # Pack library with includes (Windows paths)
                mkdir -p dist/lib dist/include
-               cp build/bin/Release/quakelib.dll dist/lib/ || cp build/bin/quakelib.dll dist/lib/
-               cp build/bin/Release/quakelib.lib dist/lib/ || cp build/bin/quakelib.lib dist/lib/ || true
-               cp -R include/quakelib dist/include/
-               cd dist && zip -r ../libquake-win.zip lib include && cd ..
+               
+               # Copy DLL and LIB files
+               if [ -f "build/bin/Release/quakelib.dll" ]; then
+                 cp build/bin/Release/quakelib.dll dist/lib/
+                 cp build/bin/Release/quakelib.lib dist/lib/ || true
+               else
+                 cp build/bin/quakelib.dll dist/lib/
+                 cp build/bin/quakelib.lib dist/lib/ || true
+               fi
+               
+               # Copy headers
+               cp -r include/quakelib dist/include/
+               
+               # Create zip using PowerShell
+               powershell -Command "Compress-Archive -Path dist/* -DestinationPath libquake-win.zip"
                
           else
                echo "$RUNNER_OS not supported"

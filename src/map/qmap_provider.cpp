@@ -106,18 +106,80 @@ namespace quakelib {
         }
       }
 
-      uint32_t currentVertexOffset = 0;
+      // Weld vertices while batching faces
+      // Note: We must check all vertex attributes including lightmap UVs because
+      // vertices at edges/corners may have the same position but different lightmap UVs
+      // (each face gets its own region in the lightmap atlas)
+      constexpr float weld_epsilon = 0.001f;
+      std::vector<uint32_t> vertexRemap;
+
+      uint32_t totalVerts = 0;
+      uint32_t weldedVerts = 0;
+
       for (const auto &face : faces) {
         const auto &verts = face->Vertices();
         const auto &inds = face->Indices();
 
-        mesh.vertices.insert(mesh.vertices.end(), verts.begin(), verts.end());
+        for (const auto &vert : verts) {
+          totalVerts++;
+          continue;
+          // Check if this vertex already exists in the mesh
+          // Must match position, UVs, normal, and tangent
+          uint32_t existingIndex = UINT32_MAX;
+          for (uint32_t i = 0; i < mesh.vertices.size(); ++i) {
+            const auto &existing = mesh.vertices[i];
+
+            // Check position
+            float dx = existing.point[0] - vert.point[0];
+            float dy = existing.point[1] - vert.point[1];
+            float dz = existing.point[2] - vert.point[2];
+            float distSq = dx * dx + dy * dy + dz * dz;
+
+            if (distSq >= weld_epsilon * weld_epsilon)
+              continue;
+
+            // Check texture UVs
+            float du = existing.uv[0] - vert.uv[0];
+            float dv = existing.uv[1] - vert.uv[1];
+            if (du * du + dv * dv >= weld_epsilon * weld_epsilon)
+              continue;
+
+            // Check lightmap UVs - must match to weld
+            // Vertices at edges have different lightmap UVs for different faces
+            // because each face gets its own region in the lightmap atlas
+            float dlu = existing.lightmap_uv[0] - vert.lightmap_uv[0];
+            float dlv = existing.lightmap_uv[1] - vert.lightmap_uv[1];
+            if (dlu * dlu + dlv * dlv >= weld_epsilon * weld_epsilon)
+              continue;
+
+            // Check normal
+            float dnx = existing.normal[0] - vert.normal[0];
+            float dny = existing.normal[1] - vert.normal[1];
+            float dnz = existing.normal[2] - vert.normal[2];
+            if (dnx * dnx + dny * dny + dnz * dnz >= weld_epsilon * weld_epsilon)
+              continue;
+
+            // All attributes match
+            existingIndex = i;
+            break;
+          }
+
+          if (existingIndex != UINT32_MAX) {
+            vertexRemap.push_back(existingIndex);
+            weldedVerts++;
+          } else {
+            vertexRemap.push_back(mesh.vertices.size());
+            mesh.vertices.push_back(vert);
+          }
+        }
 
         for (auto idx : inds) {
-          mesh.indices.push_back(idx + currentVertexOffset);
+          mesh.indices.push_back(vertexRemap[idx]);
         }
-        currentVertexOffset += verts.size();
+
+        vertexRemap.clear();
       }
+
       result.push_back(mesh);
     }
     return result;

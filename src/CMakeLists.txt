@@ -24,6 +24,8 @@ add_library(${PROJECT_NAME} SHARED
         wad/texture.cpp
         wad/wad_manager.cpp
 
+        utils/xatlas/xatlas.cpp
+
         wrapper.cpp
 )
 

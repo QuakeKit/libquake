@@ -50,6 +50,15 @@ GeneratedMapData MapBuilder::Build(quakelib::IMapProviderPtr provider) {
     // Only add if it has meshes
     if (m.model.meshCount > 0) {
       data.models.push_back(m);
+
+      // Print vertex count for worldspawn
+      if (se->ClassName() == "worldspawn") {
+        int totalVertices = 0;
+        for (int i = 0; i < m.model.meshCount; i++) {
+          totalVertices += m.model.meshes[i].vertexCount;
+        }
+        std::cout << "Worldspawn vertex count: " << totalVertices << std::endl;
+      }
     }
   }
 
@@ -181,22 +190,7 @@ QuakeModel MapBuilder::readModelEntity(quakelib::IMapProviderPtr provider,
                                        const quakelib::SolidEntityPtr &ent) {
   QuakeModel qm;
 
-  std::map<std::string, std::vector<quakelib::RenderMesh>> batchedMeshes;
-
   auto meshes = provider->GetEntityMeshes(ent);
-  // Group by texture name
-  for (auto &m : meshes) {
-    if (m.type == quakelib::SurfaceType::CLIP || m.type == quakelib::SurfaceType::SKIP ||
-        m.type == quakelib::SurfaceType::NODRAW)
-      continue;
-    batchedMeshes[m.textureName].push_back(m);
-  }
-
-  // Iterate over texture groups ...
-  // Note: Previous code batched by TextureID. Here provider returns RenderMeshes which are already separated
-  // by texture? But RenderMesh contains ONE set of vertices/indices. Actually, QMapProvider::GetEntityMeshes
-  // batches faces by TextureID and returns one RenderMesh per ID. So 'meshes' is already the list we want to
-  // iterate.
 
   for (const auto &mesh : meshes) {
     if (mesh.vertices.empty())

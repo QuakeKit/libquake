@@ -23,7 +23,6 @@ private:
 
   int wireframeLoc = -1;
   int viewPosLoc = -1;
-  int lightMultiplierLoc = -1;
   int skyTimeLoc = -1;
   int skyViewPosLoc = -1;
 };

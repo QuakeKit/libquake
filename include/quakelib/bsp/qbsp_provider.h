@@ -48,7 +48,9 @@ namespace quakelib {
     void SetFaceType(const std::string &textureName, SurfaceType type) override;
 
     std::vector<SolidEntityPtr> GetSolidEntities() const override;
+    std::vector<SolidEntityPtr> GetSolidEntities(const std::string &className) const override;
     std::vector<PointEntityPtr> GetPointEntities() const override;
+    std::vector<PointEntityPtr> GetPointEntities(const std::string &className) const override;
     std::vector<std::string> GetTextureNames() const override;
     std::vector<RenderMesh> GetEntityMeshes(const SolidEntityPtr &entity) override;
     std::optional<TextureData> GetTextureData(const std::string &name) const override;

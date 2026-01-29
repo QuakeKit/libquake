@@ -36,10 +36,8 @@ void Scene::LoadQuakeMap(const std::string &fileName, QuakeMapOptions opts) {
 
   if (path.extension() == ".bsp" || path.extension() == ".BSP") {
     provider = std::make_shared<quakelib::QBspProvider>();
-    currentOpts.lightmapMultiplier = 2.0f;
   } else {
     provider = std::make_shared<quakelib::QMapProvider>();
-    currentOpts.lightmapMultiplier = 1.0f;
   }
 
   if (!provider->Load(fileName)) {

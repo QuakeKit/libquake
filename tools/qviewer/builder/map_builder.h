@@ -4,6 +4,7 @@
 #include "../model/quake_render_model.h"
 #include <quakelib/map_provider.h>
 #include <string>
+#include <vector>
 
 class MapBuilder {
 public:

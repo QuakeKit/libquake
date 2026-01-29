@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME} SHARED
         map/qmath.cpp
         map/face.cpp
         map/entity_solid.cpp
+        map/csg.cpp
         map/lightmap_generator.cpp
         map/qmap_provider.cpp
 

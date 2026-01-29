@@ -33,8 +33,12 @@ namespace quakelib {
     virtual void GenerateGeometry(bool csg = true) = 0;
     virtual void SetFaceType(const std::string &textureName, SurfaceType type) = 0;
 
+    // Entity access
     virtual std::vector<SolidEntityPtr> GetSolidEntities() const = 0;
+    virtual std::vector<SolidEntityPtr> GetSolidEntities(const std::string &className) const = 0;
     virtual std::vector<PointEntityPtr> GetPointEntities() const = 0;
+    virtual std::vector<PointEntityPtr> GetPointEntities(const std::string &className) const = 0;
+
     virtual std::vector<std::string> GetTextureNames() const = 0;
 
     virtual std::vector<RenderMesh> GetEntityMeshes(const SolidEntityPtr &entity) = 0;

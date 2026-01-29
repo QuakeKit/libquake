@@ -52,7 +52,6 @@ uniform sampler2D texture1; // Lightmap (assigned to METALNESS slot)
 uniform vec4 colDiffuse;
 uniform float renderWireframe; // 1.0 = show wireframe, 0.0 = hide
 uniform vec3 viewPos; // Camera position for distance fading
-uniform float lightmapMultiplier;
 
 // Output fragment color
 out vec4 finalColor;
@@ -87,8 +86,7 @@ void main()
         }
     } else {
         // Multiply lightmap with diffuse
-        // Double the lightmap brightness to match Quake intensity (usually x2 or x4 in engines)
-        vec4 lightVal = lightmapColor * lightmapMultiplier;
+        vec4 lightVal = lightmapColor;
         vec4 baseVal = (texture(texture0, fragTexCoord) * colDiffuse) * lightVal;
 
         // Force Alpha To 1.0 (Opaque)

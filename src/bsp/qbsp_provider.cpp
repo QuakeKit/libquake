@@ -36,11 +36,31 @@ namespace quakelib {
     return res;
   }
 
+  std::vector<SolidEntityPtr> QBspProvider::GetSolidEntities(const std::string &className) const {
+    std::vector<SolidEntityPtr> res;
+    for (const auto &e : m_bsp->SolidEntities()) {
+      if (e->ClassName() == className) {
+        res.push_back(e);
+      }
+    }
+    return res;
+  }
+
   std::vector<PointEntityPtr> QBspProvider::GetPointEntities() const {
     std::vector<PointEntityPtr> res;
     for (const auto &e : m_bsp->PointEntities()) {
       auto pe = std::dynamic_pointer_cast<PointEntity>(e);
       if (pe)
+        res.push_back(pe);
+    }
+    return res;
+  }
+
+  std::vector<PointEntityPtr> QBspProvider::GetPointEntities(const std::string &className) const {
+    std::vector<PointEntityPtr> res;
+    for (const auto &e : m_bsp->PointEntities()) {
+      auto pe = std::dynamic_pointer_cast<PointEntity>(e);
+      if (pe && pe->ClassName() == className)
         res.push_back(pe);
     }
     return res;

@@ -14,3 +14,4 @@ build/
 site/docs_gen/doxygen_output/
 .vscode
 learning/
+.DS_Store

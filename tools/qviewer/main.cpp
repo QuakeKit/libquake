@@ -1,4 +1,5 @@
 #include "scene.h"
+#include <args/args.hxx>
 #include <iostream>
 #include <quakelib/map/map.h>
 #include <strstream>
@@ -7,32 +8,53 @@ using std::cout, std::endl;
 using namespace quakelib;
 
 void banner() {
-  cout << "QVIEWER\n"
-       << "----------------" << endl;
+  cout << R"(
+   ██████╗ ██╗   ██╗██╗███████╗██╗    ██╗███████╗██████╗ 
+  ██╔═══██╗██║   ██║██║██╔════╝██║    ██║██╔════╝██╔══██╗
+  ██║   ██║██║   ██║██║█████╗  ██║ █╗ ██║█████╗  ██████╔╝
+  ██║▄▄ ██║╚██╗ ██╔╝██║██╔══╝  ██║███╗██║██╔══╝  ██╔══██╗
+  ╚██████╔╝ ╚████╔╝ ██║███████╗╚███╔███╔╝███████╗██║  ██║
+   ╚══▀▀═╝   ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝
+                Quake 1 Map and BSP Viewer
+  -------------------------------------------------------
+)";
 }
 
 int main(int argc, char *argv[]) {
   banner();
 
-  std::string mapPath = "";
-  std::string wadPath = "";
+  args::ArgumentParser parser("qviewer - view quake1 map and bsp files", "");
+  args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+  args::ValueFlag<std::string> wads(parser, "wads", "path to wads", {'w'});
+  args::ValueFlag<std::string> map(parser, "map", "path to map or bsp", {'m'});
 
-  for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i];
-    if (arg == "-m" && i + 1 < argc) {
-      mapPath = argv[++i];
-    } else if (arg == "-w" && i + 1 < argc) {
-      wadPath = argv[++i];
-    }
+  try {
+    parser.ParseCLI(argc, argv);
+  } catch (args::Help) {
+    std::cout << parser;
+    return 0;
+  } catch (args::ParseError e) {
+    std::cerr << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
+  } catch (args::ValidationError e) {
+    std::cerr << e.what() << std::endl;
+    std::cerr << parser;
+    return 1;
+  }
+
+  if (!map || !wads) {
+    std::cout << parser;
+    return 0;
   }
 
   auto scene = Scene();
 
   QuakeMapOptions opts;
-  opts.wadPath = wadPath;
+  opts.wadPath = args::get(wads);
   opts.backgroundColor = BLACK;
 
-  scene.LoadQuakeMap(mapPath, opts);
+  scene.LoadQuakeMap(args::get(map), opts);
   scene.Run();
   return 0;
 }

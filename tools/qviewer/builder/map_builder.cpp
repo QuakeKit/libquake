@@ -1,6 +1,6 @@
 #include "map_builder.h"
 #include "../common_utils.h"
-#include <chrono>
+#include "../metrics.h"
 #include <cstring>
 #include <iostream>
 #include <quakelib/bsp/qbsp_provider.h>
@@ -15,15 +15,11 @@ MapBuilder::MapBuilder(AssetManager &assetMgr, const QuakeMapOptions &opts)
 
 GeneratedMapData MapBuilder::Build(quakelib::IMapProviderPtr provider) {
   GeneratedMapData data;
-  using Clock = std::chrono::high_resolution_clock;
-  using ms = std::chrono::milliseconds;
-
-  auto t_total_start = Clock::now();
 
   data.lightmapAtlas = generateLightmapAtlas(provider);
 
   // Convert entities to models (includes xatlas UV generation per mesh)
-  auto t_mesh_start = Clock::now();
+  Metrics::instance().startTimer("mesh_convert");
   for (const auto &se : provider->GetSolidEntities()) {
     auto m = readModelEntity(provider, se);
     // Only add if it has meshes
@@ -40,25 +36,13 @@ GeneratedMapData MapBuilder::Build(quakelib::IMapProviderPtr provider) {
       }
     }
   }
-  auto t_mesh_end = Clock::now();
+  Metrics::instance().finalizeTimer("mesh_convert");
 
   if (auto pointEnts = provider->GetPointEntities("info_player_start"); pointEnts.size() > 0) {
     data.playerStart = pointEnts[0];
   }
 
   data.textureNames = provider->GetTextureNames();
-
-  auto t_total_end = Clock::now();
-
-  // Calculate durations
-  auto d_mesh = std::chrono::duration_cast<ms>(t_mesh_end - t_mesh_start).count();
-  auto d_total = std::chrono::duration_cast<ms>(t_total_end - t_total_start).count();
-
-  // Print timing stats
-  std::cout << "\n=== MapBuilder Statistics ===" << std::endl;
-  std::cout << "Mesh/xatlas:            " << d_mesh << " ms" << std::endl;
-  std::cout << "Total:                  " << d_total << " ms" << std::endl;
-  std::cout << "============================\n" << std::endl;
 
   return data;
 }

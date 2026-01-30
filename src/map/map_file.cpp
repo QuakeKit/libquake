@@ -134,10 +134,13 @@ namespace quakelib::map {
       if (item.empty())
         continue;
       auto pos = item.find_last_of("/\\");
+      std::string wad_name = item;
       if (pos != std::string::npos) {
-        m_wads.push_back(item.substr(pos + 1));
-      } else {
-        m_wads.push_back(item);
+        wad_name = item.substr(pos + 1);
+      }
+      std::vector<std::string>::iterator it = std::find(m_wads.begin(), m_wads.end(), wad_name);
+      if (it == m_wads.end()) {
+        m_wads.push_back(wad_name);
       }
     }
   }

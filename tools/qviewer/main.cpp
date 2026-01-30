@@ -1,11 +1,15 @@
+#include "metrics.h"
 #include "scene.h"
 #include <args/args.hxx>
+#include <iomanip>
 #include <iostream>
 #include <quakelib/map/map.h>
-#include <strstream>
+#include <vector>
 
 using std::cout, std::endl;
 using namespace quakelib;
+
+void printMetrics();
 
 void banner() {
   cout << R"(
@@ -54,7 +58,25 @@ int main(int argc, char *argv[]) {
   opts.wadPath = args::get(wads);
   opts.backgroundColor = BLACK;
 
+  Metrics::instance().startTimer("Total");
   scene.LoadQuakeMap(args::get(map), opts);
+  Metrics::instance().finalizeTimer("Total");
+
+  printMetrics();
   scene.Run();
+
   return 0;
+}
+
+void printMetrics() {
+  std::cout << std::endl;
+  std::cout << " Metric                 │ Time (ms)" << std::endl;
+  std::cout << "────────────────────────┼──────────" << std::endl;
+  std::cout << " Geometry Generate      │ " << std::setw(8) << Metrics::instance().getMetrics("geo_generate");
+  std::cout << std::endl;
+  std::cout << " Mesh Convert           │ " << std::setw(8) << Metrics::instance().getMetrics("mesh_convert");
+  std::cout << std::endl;
+  std::cout << "────────────────────────┼──────────" << std::endl;
+  std::cout << " Total                  │ " << std::setw(8) << Metrics::instance().getMetrics("Total");
+  std::cout << std::endl;
 }

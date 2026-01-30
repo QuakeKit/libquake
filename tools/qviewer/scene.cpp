@@ -1,6 +1,7 @@
 #include "scene.h"
 #include "builder/map_builder.h"
 #include "common_utils.h"
+#include "metrics.h"
 #include <filesystem>
 #include <quakelib/bsp/qbsp_provider.h>
 #include <quakelib/map/qmap_provider.h>
@@ -66,8 +67,9 @@ void Scene::LoadQuakeMap(const std::string &fileName, QuakeMapOptions opts) {
   provider->SetFaceType("trigger", quakelib::SurfaceType::CLIP);
   provider->SetFaceType("skip", quakelib::SurfaceType::SKIP);
 
-  // Generate geometry (CSG on for maps, ignored for BSP)
+  Metrics::instance().startTimer("geo_generate");
   provider->GenerateGeometry(true);
+  Metrics::instance().finalizeTimer("geo_generate");
 
   MapBuilder builder(*assetMgr, opts);
   currentMapData = builder.Build(provider);
@@ -101,7 +103,7 @@ void Scene::Run() {
   DisableCursor();
   while (!WindowShouldClose()) {
     if (IsKeyPressed(KEY_M)) {
-      EnableCursor();
+      IsCursorHidden() ? EnableCursor() : DisableCursor();
     }
 
     if (IsKeyPressed(KEY_V))

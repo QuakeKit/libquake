@@ -14,7 +14,7 @@ struct QuakeModel {
 struct QuakeMapOptions {
   std::string texturePath = "textures/";
   std::string wadPath = "wads/";
-  float inverseScale = 24.0f;
+  float inverseScale = 32.0f;
   bool showGrid = false;
   bool showVerts = false;
   bool wireframe = false;

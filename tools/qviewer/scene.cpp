@@ -23,8 +23,8 @@ void Scene::LoadQuakeMap(const std::string &fileName, QuakeMapOptions opts) {
 
   if (isMapLoaded) {
     for (auto &m : currentMapData.models) {
-      m.model.materials = nullptr;
       UnloadModel(m.model);
+      m.model.materials = nullptr;
     }
     UnloadTexture(currentMapData.lightmapAtlas);
   }
@@ -139,8 +139,9 @@ void Scene::Run() {
 
   if (isMapLoaded) {
     for (auto &m : currentMapData.models) {
-      m.model.materials = nullptr;
-      UnloadModel(m.model);
+      m.model.materialCount = 0;
+      for (int i = 0; i < m.model.meshCount; i++)
+        UnloadMesh(m.model.meshes[i]);
     }
     UnloadTexture(currentMapData.lightmapAtlas);
   }

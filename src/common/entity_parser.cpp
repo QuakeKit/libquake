@@ -26,7 +26,6 @@ namespace quakelib {
     return s;
   }
 
-
   void EntityParser::ParseEntites(std::istream &strstr, EntityParsedFunc fn) {
     std::vector<ParsedEntity *> objects;
     ParsedEntity *current = nullptr;
@@ -39,10 +38,9 @@ namespace quakelib {
       }
       line = ltrim(line);
 
-
       if (line == "// Format: Valve") {
-
       }
+
       if (line.starts_with("//")) {
         continue;
       }
@@ -145,4 +143,4 @@ namespace quakelib {
     m_attributes.erase("wad");
   }
 
-}
+} // namespace quakelib

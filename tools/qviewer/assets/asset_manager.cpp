@@ -20,17 +20,9 @@ AssetManager::~AssetManager() { Cleanup(); }
 void AssetManager::Cleanup() {
   if (materialPool) {
     for (int i = 0; i < materialCount; i++) {
+      // we need to prevend shader dealloc, since we share resources.
+      materialPool[i].shader.id = rlGetShaderIdDefault();
       UnloadMaterial(materialPool[i]);
-      // Note: Textures loaded inside materials should technically be unloaded too
-      // if we loaded them specifically for this material.
-      // Raylib's UnloadMaterial unloads the maps? No, it unloads independent generated things?
-      // Actually UnloadMaterial checks if texture id > 0 and unloads if it's not default.
-      // Wait, Raylib's UnloadMaterial implementation:
-      // if (material.maps[i].texture.id > 0) rlUnloadTexture(material.maps[i].texture.id);
-      // So yes, it unloads texture. But we share lightmapAtlas!
-      // We need to be careful not to unload lightmapAtlas if we don't own it.
-      // The method BuildMaterialPool takes lightmapAtlas, so we don't own it.
-      // We should Set material.maps[x].texture.id = 0 before UnloadMaterial if we don't want it deleted.
     }
     MemFree(materialPool);
     materialPool = nullptr;

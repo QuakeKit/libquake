@@ -1,6 +1,6 @@
 #include <iostream>
 #include <quakelib/map/brush.h>
-#include <quakelib/map/qmath.h>
+#include <quakelib/qmath.h>
 
 namespace quakelib::map {
   const auto fv3zero = Vertex();
@@ -13,7 +13,7 @@ namespace quakelib::map {
     calculateAABB();
   }
 
-  void Brush::GetBiggerBBox(fvec3 &outMin, fvec3 &outMax) {
+  void Brush::GetBiggerBBox(Vec3 &outMin, Vec3 &outMax) {
     outMax[0] = max[0] > outMax[0] ? max[0] : outMax[0];
     outMax[1] = max[1] > outMax[1] ? max[1] : outMax[1];
     outMax[2] = max[2] > outMax[2] ? max[2] : outMax[2];
@@ -24,18 +24,18 @@ namespace quakelib::map {
   }
 
   boolRet<Vertex> Brush::intersectPlanes(const FacePtr &a, const FacePtr &b, const FacePtr &c) {
-    fvec3 n0 = a->m_planeNormal;
-    fvec3 n1 = b->m_planeNormal;
-    fvec3 n2 = c->m_planeNormal;
+    Vec3 n0 = a->m_planeNormal;
+    Vec3 n1 = b->m_planeNormal;
+    Vec3 n2 = c->m_planeNormal;
 
-    float denom = dot(cross(n0, n1), n2);
-    if (denom < CMP_EPSILON)
+    float denom = math::Dot(math::Cross(n0, n1), n2);
+    if (denom < math::CMP_EPSILON)
       return boolRet<Vertex>(false, fv3zero);
 
     Vertex v = {};
-    v.point =
-        (cross(n1, n2) * a->m_planeDist + cross(n2, n0) * b->m_planeDist + cross(n0, n1) * c->m_planeDist) /
-        denom;
+    v.point = (math::Cross(n1, n2) * a->m_planeDist + math::Cross(n2, n0) * b->m_planeDist +
+               math::Cross(n0, n1) * c->m_planeDist) /
+              denom;
 
     return boolRet<Vertex>(true, v);
   }
@@ -44,7 +44,7 @@ namespace quakelib::map {
     for (int n = 0; n <= from; n++) {
       auto otherPoly = m_faces[n];
       for (int i = 0; i < otherPoly->m_vertices.size(); i++) {
-        if (dist3(otherPoly->m_vertices[i].point, v.point) < CMP_EPSILON) {
+        if (dist3(otherPoly->m_vertices[i].point, v.point) < math::CMP_EPSILON) {
           return otherPoly->m_vertices[i];
         }
       }
@@ -75,9 +75,9 @@ namespace quakelib::map {
       if (f->m_vertices.size() < 3)
         continue;
 
-      auto windFaceBasis = normalize(f->m_vertices[1].point - f->m_vertices[0].point);
-      auto windFaceCenter = fvec3();
-      auto windFaceNormal = normalize(f->m_planeNormal);
+      auto windFaceBasis = math::Norm(f->m_vertices[1].point - f->m_vertices[0].point);
+      auto windFaceCenter = Vec3();
+      auto windFaceNormal = math::Norm(f->m_planeNormal);
 
       for (auto v : f->m_vertices) {
         windFaceCenter += v.point;
@@ -85,16 +85,15 @@ namespace quakelib::map {
       windFaceCenter /= (float)f->m_vertices.size();
 
       std::stable_sort(f->m_vertices.begin(), f->m_vertices.end(), [&](Vertex l, Vertex r) {
-        fvec3 u = normalize(windFaceBasis);
-        fvec3 v = normalize(cross(u, windFaceNormal));
+        Vec3 u = math::Norm(windFaceBasis);
+        Vec3 v = math::Norm(math::Cross(u, windFaceNormal));
 
-        fvec3 loc_a = l.point - windFaceCenter;
-        float a_pu = dot(loc_a, u);
-        float a_pv = dot(loc_a, v);
-
-        fvec3 loc_b = r.point - windFaceCenter;
-        float b_pu = dot(loc_b, u);
-        float b_pv = dot(loc_b, v);
+        Vec3 loc_a = l.point - windFaceCenter;
+        float a_pu = math::Dot(loc_a, u);
+        float a_pv = math::Dot(loc_a, v);
+        Vec3 loc_b = r.point - windFaceCenter;
+        float b_pu = math::Dot(loc_b, u);
+        float b_pv = math::Dot(loc_b, v);
 
         float a_angle = atan2(a_pv, a_pu);
         float b_angle = atan2(b_pv, b_pu);
@@ -129,10 +128,10 @@ namespace quakelib::map {
     std::vector<float> dists;
     dists.reserve(verts.size());
 
-    double split_epsilon = CMP_EPSILON;
+    double split_epsilon = math::CMP_EPSILON;
 
     for (const auto &v : verts) {
-      dists.push_back(dot(normal, v.point) - dist);
+      dists.push_back(math::Dot(normal, v.point) - dist);
     }
 
     for (size_t i = 0; i < verts.size(); ++i) {
@@ -197,8 +196,8 @@ namespace quakelib::map {
       clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, isCoplanar);
       return;
     case MapSurface::ON_PLANE: {
-      double angle = dot(face->m_planeNormal, (*plane)->m_planeNormal) - 1;
-      if ((angle < CMP_EPSILON) && (angle > -CMP_EPSILON)) {
+      double angle = math::Dot(face->m_planeNormal, (*plane)->m_planeNormal) - 1;
+      if ((angle < math::CMP_EPSILON) && (angle > -math::CMP_EPSILON)) {
         clipFace(face, plane + 1, planeEnd, outFaces, keepOnPlane, true);
         return;
       }
@@ -228,17 +227,17 @@ namespace quakelib::map {
     return clippedFaces;
   }
 
-  fvec3 GetUnitNormal(const fvec2 p1, const fvec2 p2, const float s) {
-    const fvec2 p3 = p1 + ((p2 - p1) * s);
+  Vec3 GetUnitNormal(const Vec2 p1, const Vec2 p2, const float s) {
+    const Vec2 p3 = p1 + ((p2 - p1) * s);
 
     const float m = (p3[1] - p1[1]) / (p3[0] - p1[0]);
     const float c = p1[1] - m * p1[0];
     const float y = (m * p1[0]) + c;
 
-    const fvec2 tangent = normalize(fvec2(p1[0], p2[1]));
-    fvec3 normal = fvec3(-tangent[1], 0, tangent[0]);
+    const Vec2 tangent = math::Norm(Vec2{p1[0], p2[1]});
+    Vec3 normal = Vec3{-tangent[1], 0, tangent[0]};
 
-    return normalize(normal);
+    return math::Norm(normal);
   }
 
   void Brush::generatePolygons(const std::map<int, MapSurface::eFaceType> &faceTypes,
@@ -273,7 +272,7 @@ namespace quakelib::map {
 
           auto v = res.second;
           v.normal = m_faces[i]->m_planeNormal;
-          v.normal = normalize(v.normal);
+          v.normal = math::Norm(v.normal);
           v.tangent = m_faces[k]->CalcTangent();
 
           auto tb = texBounds.find(m_faces[k]->m_textureID);
@@ -294,7 +293,7 @@ namespace quakelib::map {
 
   bool Brush::isLegalVertex(const Vertex &v, const std::vector<FacePtr> &faces) {
     for (const auto &f : faces) {
-      auto proj = tue::math::dot(f->m_planeNormal, v.point);
+      auto proj = math::Dot(f->m_planeNormal, v.point);
       if (proj > f->m_planeDist && fabs(f->m_planeDist - proj) > 0.0008) {
         return false;
       }

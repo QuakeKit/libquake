@@ -44,7 +44,7 @@ struct vert {
   vec2 uv;
 };
 
-static vec4 toVec4(fvec4 from) {
+static vec4 toVec4(Vec4 from) {
   vec4 out;
   out.x = from[0];
   out.y = from[1];
@@ -53,7 +53,7 @@ static vec4 toVec4(fvec4 from) {
   return out;
 }
 
-static vec3 toVec3(fvec3 from) {
+static vec3 toVec3(Vec3 from) {
   vec3 out;
   out.x = from[0];
   out.y = from[1];
@@ -61,7 +61,7 @@ static vec3 toVec3(fvec3 from) {
   return out;
 }
 
-static vec2 toVec2(fvec2 from) {
+static vec2 toVec2(Vec2 from) {
   vec2 out;
   out.x = from[0];
   out.y = from[1];

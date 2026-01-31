@@ -4,9 +4,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/tests)
 
 project(
-        quakelib
-        VERSION 1.0.0
-        LANGUAGES CXX
+  quakelib
+  VERSION 1.0.0
+  LANGUAGES CXX
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -17,11 +17,11 @@ option(QLIB_BUILD_TESTS "Build tests" ON)
 
 add_subdirectory(src)
 
-if (${QLIB_BUILD_VIEWER})
+if(${QLIB_BUILD_VIEWER})
   add_subdirectory(tools/qviewer)
 endif()
 
-if (${QLIB_BUILD_TESTS})
+if(${QLIB_BUILD_TESTS})
   add_subdirectory(tests)
 endif()
 

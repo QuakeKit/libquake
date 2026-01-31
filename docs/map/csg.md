@@ -70,7 +70,7 @@ void SolidMapEntity::fixTJunctions() {
     for (auto &face : allFaces) {
         for (edge : face.edges) {
              // Find vertices that lie ON this edge
-             std::vector<fvec3> splits = findVerticesOnEdge(edge, uniqueVerts);
+             std::vector<Vec3> splits = findVerticesOnEdge(edge, uniqueVerts);
              
              // Insert them into the face
              if (!splits.empty()) {

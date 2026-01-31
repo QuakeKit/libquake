@@ -13,7 +13,6 @@ add_library(${PROJECT_NAME} SHARED
         map/map_file.cpp
         map/map.cpp
         map/brush.cpp
-        map/qmath.cpp
         map/face.cpp
         map/entity_solid.cpp
         map/csg.cpp

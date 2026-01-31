@@ -84,9 +84,9 @@ void Scene::LoadQuakeMap(const std::string &fileName, QuakeMapOptions opts) {
   }
 
   if (currentMapData.playerStart != nullptr) {
-    camera.position.x = -currentMapData.playerStart->Origin().x() / opts.inverseScale;
-    camera.position.y = currentMapData.playerStart->Origin().z() / opts.inverseScale;
-    camera.position.z = currentMapData.playerStart->Origin().y() / opts.inverseScale;
+    camera.position.x = -currentMapData.playerStart->Origin().X / opts.inverseScale;
+    camera.position.y = currentMapData.playerStart->Origin().Z / opts.inverseScale;
+    camera.position.z = currentMapData.playerStart->Origin().Y / opts.inverseScale;
     auto angle = (currentMapData.playerStart->Angle() - 90) * DEG2RAD;
     auto target = Vector3Transform((Vector3){0, 0, 1}, MatrixRotateZYX((Vector3){0, -angle, 0}));
 

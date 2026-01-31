@@ -33,6 +33,11 @@ namespace quakelib::map {
 
   void QMapFile::Parse(const std::string &filename) {
     auto strstr = std::fstream(filename);
+    try {
+      strstr.exceptions(std::ios::failbit);
+    } catch (std::ios_base::failure &) {
+      throw std::system_error{errno, std::iostream_category(), filename};
+    }
     Parse(strstr);
     strstr.close();
   }
@@ -84,7 +89,7 @@ namespace quakelib::map {
       }
 
       std::stringstream l(line);
-      std::array<fvec3, 3> facePoints{};
+      std::array<Vec3, 3> facePoints{};
       l >> facePoints[0][0] >> facePoints[0][1] >> facePoints[0][2];
       l >> facePoints[1][0] >> facePoints[1][1] >> facePoints[1][2];
       l >> facePoints[2][0] >> facePoints[2][1] >> facePoints[2][2];

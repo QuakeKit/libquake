@@ -189,11 +189,11 @@ struct RenderMesh {
 
 ```cpp
 struct Vertex {
-    fvec3 point;          // Position
-    fvec3 normal;         // Normal vector
-    fvec2 uv;             // Texture coordinates
-    fvec2 lightmap_uv;    // Lightmap coordinates
-    fvec4 tangent;        // Tangent + bitangent sign
+    Vec3 point;          // Position
+    Vec3 normal;         // Normal vector
+    Vec2 uv;             // Texture coordinates
+    Vec2 lightmap_uv;    // Lightmap coordinates
+    Vec4 tangent;        // Tangent + bitangent sign
 };
 ```
 

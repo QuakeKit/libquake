@@ -52,7 +52,7 @@ namespace quakelib::map {
             static_cast<long long>(b1.m_faces.size()) - static_cast<long long>(cpBrush.m_faces.size());
       }
     }
-    m_center = CalculateCenterFromBBox(m_min, m_max);
+    m_center = math::CalculateCenterFromBBox(m_min, m_max);
     if (m_brushes.size() > 0 && m_clippedBrushes.size() > 0) {
       m_wasClipped = true;
       weldVertices();
@@ -93,11 +93,10 @@ namespace quakelib::map {
   }
 
   void SolidMapEntity::fixTJunctions() {
-    using namespace tue::math;
     auto &targetBrushes = m_clippedBrushes.empty() ? m_brushes : m_clippedBrushes;
     double edge_epsilon = 0.05;
 
-    std::vector<fvec3> uniqueVerts;
+    std::vector<Vec3> uniqueVerts;
     uniqueVerts.reserve(targetBrushes.size() * 32);
 
     for (const auto &b : targetBrushes) {
@@ -108,7 +107,7 @@ namespace quakelib::map {
       }
     }
 
-    std::sort(uniqueVerts.begin(), uniqueVerts.end(), [](const fvec3 &a, const fvec3 &b) {
+    std::sort(uniqueVerts.begin(), uniqueVerts.end(), [](const Vec3 &a, const Vec3 &b) {
       if (std::abs(a[0] - b[0]) > 0.001)
         return a[0] < b[0];
       if (std::abs(a[1] - b[1]) > 0.001)
@@ -117,7 +116,7 @@ namespace quakelib::map {
     });
 
     auto last = std::unique(uniqueVerts.begin(), uniqueVerts.end(),
-                            [](const fvec3 &a, const fvec3 &b) { return dist3(a, b) < 0.001; });
+                            [](const Vec3 &a, const Vec3 &b) { return dist3(a, b) < 0.001; });
     uniqueVerts.erase(last, uniqueVerts.end());
 
     for (auto &b : targetBrushes) {
@@ -136,19 +135,19 @@ namespace quakelib::map {
 
           newVerts.push_back(v1);
 
-          fvec3 dir = v2.point - v1.point;
-          float len = length(dir);
+          Vec3 dir = v2.point - v1.point;
+          float len = math::Len(dir);
           if (len < edge_epsilon)
             continue;
 
-          fvec3 dirNorm = normalize(dir);
-          std::vector<fvec3> splits;
+          Vec3 dirNorm = math::Norm(dir);
+          std::vector<Vec3> splits;
 
           float min_x = std::min(v1.point[0], v2.point[0]) - edge_epsilon;
           float max_x = std::max(v1.point[0], v2.point[0]) + edge_epsilon;
 
           auto it = std::lower_bound(uniqueVerts.begin(), uniqueVerts.end(), min_x,
-                                     [](const fvec3 &p, float val) { return p[0] < val; });
+                                     [](const Vec3 &p, float val) { return p[0] < val; });
 
           for (; it != uniqueVerts.end() && (*it)[0] <= max_x; ++it) {
             const auto &testP = *it;
@@ -156,11 +155,11 @@ namespace quakelib::map {
             if (dist3(testP, v1.point) < edge_epsilon || dist3(testP, v2.point) < edge_epsilon)
               continue;
 
-            fvec3 v1_to_p = testP - v1.point;
-            float t = dot(v1_to_p, dirNorm);
+            Vec3 v1_to_p = testP - v1.point;
+            float t = math::Dot(v1_to_p, dirNorm);
 
             if (t > edge_epsilon && t < len - edge_epsilon) {
-              fvec3 closest = v1.point + (dirNorm * t);
+              Vec3 closest = v1.point + (dirNorm * t);
               if (dist3(closest, testP) < edge_epsilon) {
                 splits.push_back(testP);
               }
@@ -171,13 +170,13 @@ namespace quakelib::map {
             continue;
 
           std::sort(splits.begin(), splits.end(),
-                    [&](const fvec3 &a, const fvec3 &b) { return dist3(a, v1.point) < dist3(b, v1.point); });
+                    [&](const Vec3 &a, const Vec3 &b) { return dist3(a, v1.point) < dist3(b, v1.point); });
 
           for (const auto &splitP : splits) {
             if (!newVerts.empty() && dist3(newVerts.back().point, splitP) < 0.001)
               continue;
 
-            float t = length(splitP - v1.point) / len;
+            float t = math::Len(splitP - v1.point) / len;
             Vertex splitV = interpolate(v1, v2, t);
             splitV.point = splitP;
             newVerts.push_back(splitV);
@@ -193,7 +192,6 @@ namespace quakelib::map {
   }
 
   void SolidMapEntity::removeCollinearVertices() {
-    using namespace tue::math;
     auto &targetBrushes = m_wasClipped ? m_clippedBrushes : m_brushes;
 
     for (auto &brush : targetBrushes) {
@@ -209,20 +207,20 @@ namespace quakelib::map {
             size_t prev = (i + verts.size() - 1) % verts.size();
             size_t next = (i + 1) % verts.size();
 
-            fvec3 p = verts[prev].point;
-            fvec3 c = verts[i].point;
-            fvec3 n = verts[next].point;
+            Vec3 p = verts[prev].point;
+            Vec3 c = verts[i].point;
+            Vec3 n = verts[next].point;
 
-            fvec3 e1 = c - p;
-            fvec3 e2 = n - c;
+            Vec3 e1 = c - p;
+            Vec3 e2 = n - c;
 
-            if (length(e1) < CMP_EPSILON || length(e2) < CMP_EPSILON) {
+            if (math::Len(e1) < math::CMP_EPSILON || math::Len(e2) < math::CMP_EPSILON) {
               verts.erase(verts.begin() + i);
               changed = true;
               break;
             }
 
-            if (length(cross(normalize(e1), normalize(e2))) < CMP_EPSILON) {
+            if (math::Len(math::Cross(math::Norm(e1), math::Norm(e2))) < math::CMP_EPSILON) {
               verts.erase(verts.begin() + i);
               changed = true;
               break;
@@ -235,10 +233,8 @@ namespace quakelib::map {
   }
 
   void SolidMapEntity::triangulateFaces() {
-    using namespace tue::math;
-
-    auto isPointInTriangle = [](const fvec2 &p, const fvec2 &a, const fvec2 &b, const fvec2 &c) {
-      auto sign = [](const fvec2 &p1, const fvec2 &p2, const fvec2 &p3) {
+    auto isPointInTriangle = [](const Vec2 &p, const Vec2 &a, const Vec2 &b, const Vec2 &c) {
+      auto sign = [](const Vec2 &p1, const Vec2 &p2, const Vec2 &p3) {
         return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
       };
       float d1 = sign(p, a, b);
@@ -262,7 +258,7 @@ namespace quakelib::map {
         }
 
         std::vector<Vertex> &verts = face->m_vertices;
-        fvec3 normal = face->GetPlaneNormal();
+        Vec3 normal = face->GetPlaneNormal();
 
         int axis = 0;
         float nx = std::abs(normal[0]);
@@ -274,7 +270,7 @@ namespace quakelib::map {
         else if (nz > nx && nz > ny)
           axis = 2;
 
-        auto project = [&](const fvec3 &v) -> fvec2 {
+        auto project = [&](const Vec3 &v) -> Vec2 {
           if (axis == 0)
             return {v[1], v[2]};
           if (axis == 1)
@@ -307,17 +303,17 @@ namespace quakelib::map {
             const Vertex &vC = verts[nCurr];
             const Vertex &vN = verts[nNext];
 
-            fvec3 edgeA = vC.point - vP.point;
-            fvec3 edgeB = vN.point - vC.point;
-            fvec3 crossP = cross(edgeA, edgeB);
+            Vec3 edgeA = vC.point - vP.point;
+            Vec3 edgeB = vN.point - vC.point;
+            Vec3 crossP = math::Cross(edgeA, edgeB);
 
-            if (dot(crossP, normal) <= -1e-4f)
+            if (math::Dot(crossP, normal) <= -1e-4f)
               continue;
 
             bool containsPoint = false;
-            fvec2 p2 = project(vP.point);
-            fvec2 c2 = project(vC.point);
-            fvec2 n2 = project(vN.point);
+            Vec2 p2 = project(vP.point);
+            Vec2 c2 = project(vC.point);
+            Vec2 n2 = project(vN.point);
 
             for (int k = 0; k < count; ++k) {
               if (k == idxPrev || k == idxCurr || k == idxNext)

@@ -1,29 +1,23 @@
 #pragma once
 
-#include <quakelib/tue/vec.hpp>
+#include <quakelib/qmath.h>
 #include <vector>
 
 namespace quakelib {
 
-  using tue::fvec2;
-  using tue::fvec3;
-  using tue::fvec4;
-
-  /*
-  using tue::math::cross;
-  using tue::math::dot;
-  using tue::math::normalize;
-  */
+  using math::Vec2;
+  using math::Vec3;
+  using math::Vec4;
 
   /**
    * @brief Represents a vertex in 3D space with associated attributes.
    */
   struct Vertex {
-    fvec3 point;       ///< The 3D position of the vertex.
-    fvec3 normal;      ///< The normal vector at this vertex.
-    fvec2 uv;          ///< Texture coordinates.
-    fvec2 lightmap_uv; ///< Lightmap coordinates.
-    fvec4 tangent;     ///< Tangent vector (xyz) and bitangent sign (w).
+    Vec3 point;       ///< The 3D position of the vertex.
+    Vec3 normal;      ///< The normal vector at this vertex.
+    Vec2 uv;          ///< Texture coordinates.
+    Vec2 lightmap_uv; ///< Lightmap coordinates.
+    Vec4 tangent;     ///< Tangent vector (xyz) and bitangent sign (w).
 
     /**
      * @brief Checks if this vertex's position exists in a given list.

@@ -11,9 +11,6 @@ namespace quakelib {
 
   const char *STR_CLASSNAME = "classname";
 
-
-
-
   const string &Entity::ClassName() const { return m_classname; }
 
   bool Entity::ClassContains(const std::string &substr) const {
@@ -38,8 +35,8 @@ namespace quakelib {
     return std::atof(val.c_str());
   }
 
-  tue::fvec3 Entity::AttributeVec3(const std::string &classname) {
-    auto ret = tue::fvec3{};
+  math::Vec3 Entity::AttributeVec3(const std::string &classname) {
+    auto ret = math::Vec3{};
     auto val = AttributeStr(classname);
     if (val == "")
       return ret;
@@ -49,8 +46,8 @@ namespace quakelib {
     return ret;
   }
 
-  tue::fvec2 Entity::AttributsVec2(const std::string &classname) {
-    auto ret = tue::fvec2{};
+  math::Vec2 Entity::AttributeVec2(const std::string &classname) {
+    auto ret = math::Vec2{};
     auto val = AttributeStr(classname);
     if (val == "")
       return ret;
@@ -60,11 +57,8 @@ namespace quakelib {
     return ret;
   }
 
-
-
-
-  const tue::fvec3 &PointEntity::Origin() const { return m_origin; }
+  const math::Vec3 &PointEntity::Origin() const { return m_origin; }
 
   float PointEntity::Angle() { return m_angle; }
 
-}
+} // namespace quakelib

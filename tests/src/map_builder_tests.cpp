@@ -6,39 +6,39 @@
 using namespace quakelib;
 using namespace quakelib::map;
 
-Brush CreateBlock(fvec3 min, fvec3 max) {
+Brush CreateBlock(Vec3 min, Vec3 max) {
   Brush b;
 
   // Points of the box
-  fvec3 p000 = {min[0], min[1], min[2]};
-  fvec3 p100 = {max[0], min[1], min[2]};
-  fvec3 p110 = {max[0], max[1], min[2]};
-  fvec3 p010 = {min[0], max[1], min[2]};
+  Vec3 p000 = {min[0], min[1], min[2]};
+  Vec3 p100 = {max[0], min[1], min[2]};
+  Vec3 p110 = {max[0], max[1], min[2]};
+  Vec3 p010 = {min[0], max[1], min[2]};
 
-  fvec3 p001 = {min[0], min[1], max[2]};
-  fvec3 p101 = {max[0], min[1], max[2]};
-  fvec3 p111 = {max[0], max[1], max[2]};
-  fvec3 p011 = {min[0], max[1], max[2]};
+  Vec3 p001 = {min[0], min[1], max[2]};
+  Vec3 p101 = {max[0], min[1], max[2]};
+  Vec3 p111 = {max[0], max[1], max[2]};
+  Vec3 p011 = {min[0], max[1], max[2]};
 
   // Faces (Derived manually for Outward Normals)
 
   // Z+ (Top) - Normal (0,0,1) - CW in XY
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p011, p111, p101}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p011, p111, p101}, 0, StandardUV{}, 0, 1, 1));
 
   // Z- (Bottom) - Normal (0,0,-1) - CCW in XY
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p000, p100, p110}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p000, p100, p110}, 0, StandardUV{}, 0, 1, 1));
 
   // X+ (Right) - Normal (1,0,0) - CW in YZ
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p100, p101, p111}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p100, p101, p111}, 0, StandardUV{}, 0, 1, 1));
 
   // X- (Left) - Normal (-1,0,0) - CCW in YZ
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p000, p010, p011}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p000, p010, p011}, 0, StandardUV{}, 0, 1, 1));
 
   // Y+ (Back) - Normal (0,1,0) - CCW in XZ
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p110, p111, p011}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p110, p111, p011}, 0, StandardUV{}, 0, 1, 1));
 
   // Y- (Front) - Normal (0,-1,0) - CW in XZ
-  b.AddFace(std::make_shared<MapSurface>(std::array<fvec3, 3>{p000, p001, p101}, 0, StandardUV{}, 0, 1, 1));
+  b.AddFace(std::make_shared<MapSurface>(std::array<Vec3, 3>{p000, p001, p101}, 0, StandardUV{}, 0, 1, 1));
 
   return b;
 }

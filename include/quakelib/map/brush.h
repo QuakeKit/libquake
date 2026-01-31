@@ -47,7 +47,7 @@ namespace quakelib::map {
      * @param[in,out] min The current minimum bound, updated if brush extends beyond it.
      * @param[in,out] max The current maximum bound, updated if brush extends beyond it.
      */
-    void GetBiggerBBox(fvec3 &min, fvec3 &max);
+    void GetBiggerBBox(Vec3 &min, Vec3 &max);
 
     /**
      * @brief Checks if the brush is a blocking volume (e.g., world geometry).
@@ -73,8 +73,8 @@ namespace quakelib::map {
      */
     void AddFace(FacePtr face) { m_faces.push_back(face); }
 
-    fvec3 min{}; ///< Minimum coordinate of the brush's axial bounding box.
-    fvec3 max{}; ///< Maximum coordinate of the brush's axial bounding box.
+    Vec3 min{}; ///< Minimum coordinate of the brush's axial bounding box.
+    Vec3 max{}; ///< Maximum coordinate of the brush's axial bounding box.
 
   private:
     std::vector<FacePtr> m_faces;

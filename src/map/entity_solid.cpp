@@ -12,7 +12,7 @@ namespace quakelib::map {
       b.buildGeometry(faceTypes, texBounds);
       b.GetBiggerBBox(m_min, m_max);
     }
-    m_center = CalculateCenterFromBBox(m_min, m_max);
+    m_center = math::CalculateCenterFromBBox(m_min, m_max);
   }
 
   void SolidMapEntity::convertToOpenGLCoords() {
@@ -36,7 +36,7 @@ namespace quakelib::map {
       convertBrush(b);
     }
 
-    auto swapYz = [](fvec3 &v) {
+    auto swapYz = [](Vec3 &v) {
       auto temp = v[1];
       v[1] = v[2];
       v[2] = -temp;

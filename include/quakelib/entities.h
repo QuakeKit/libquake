@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <quakelib/qmath.h>
 #include <quakelib/surface.h>
-#include <quakelib/tue/vec.hpp>
 
 namespace quakelib {
 
@@ -97,14 +97,14 @@ namespace quakelib {
      * @param classname The attribute key.
      * @return The attribute value as a vec3.
      */
-    tue::fvec3 AttributeVec3(const std::string &classname);
+    math::Vec3 AttributeVec3(const std::string &classname);
 
     /**
      * @brief Retrieves a 2D vector attribute value.
      * @param classname The attribute key.
      * @return The attribute value as a vec2.
      */
-    tue::fvec2 AttributsVec2(const std::string &classname);
+    math::Vec2 AttributeVec2(const std::string &classname);
 
   protected:
     attribMap_t m_attributes;              ///< Map of all key-value attributes.
@@ -136,13 +136,13 @@ namespace quakelib {
      * @brief Gets the origin of the point entity.
      * @return The position vector.
      */
-    const tue::fvec3 &Origin() const;
+    const math::Vec3 &Origin() const;
 
     /**
      * @brief Sets the origin of the point entity.
      * @param origin The new position vector.
      */
-    void SetOrigin(const tue::fvec3 &origin) { m_origin = origin; }
+    void SetOrigin(const math::Vec3 &origin) { m_origin = origin; }
 
     /**
      * @brief Gets the angle of the point entity.
@@ -151,7 +151,7 @@ namespace quakelib {
     float Angle();
 
   private:
-    tue::fvec3 m_origin{0}; ///< The 3D position of the entity.
+    math::Vec3 m_origin{0}; ///< The 3D position of the entity.
     float m_angle = 0;      ///< The orientation angle.
   };
 

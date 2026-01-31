@@ -2,9 +2,7 @@
 #include <cmath>
 #include <iostream>
 #include <quakelib/map/lightmap_generator.h>
-#include <quakelib/tue/vec.hpp>
-
-using namespace tue::math;
+#include <quakelib/qmath.h>
 
 namespace quakelib::map {
 
@@ -13,7 +11,6 @@ namespace quakelib::map {
 
   bool LightmapGenerator::Pack(const std::vector<SolidEntityPtr> &entities) {
     m_entries.clear();
-
 
     for (const auto &ent : entities) {
       auto brushes = ent->GetClippedBrushes();
@@ -25,24 +22,19 @@ namespace quakelib::map {
           if (face->Type() != MapSurface::SOLID)
             continue;
 
-
-
-
-          fvec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-          fvec2 maxUV = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+          Vec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+          Vec2 maxUV = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
 
           for (const auto &v : face->Vertices()) {
-            fvec2 uv = face->CalcLightmapUV(v.point);
+            Vec2 uv = face->CalcLightmapUV(v.point);
             minUV[0] = std::min(minUV[0], uv[0]);
             minUV[1] = std::min(minUV[1], uv[1]);
             maxUV[0] = std::max(maxUV[0], uv[0]);
             maxUV[1] = std::max(maxUV[1], uv[1]);
           }
 
-
           int w = static_cast<int>(std::ceil((maxUV[0] - minUV[0]) / m_luxelSize)) + 1;
           int h = static_cast<int>(std::ceil((maxUV[1] - minUV[1]) / m_luxelSize)) + 1;
-
 
           w = std::max(1, w);
           h = std::max(1, h);
@@ -52,18 +44,13 @@ namespace quakelib::map {
           entry.w = w;
           entry.h = h;
 
-
-
-
           m_entries.push_back(entry);
         }
       }
     }
 
-
     std::sort(m_entries.begin(), m_entries.end(),
               [](const LightmapEntry &a, const LightmapEntry &b) { return a.h > b.h; });
-
 
     int currentX = 0;
     int currentY = 0;
@@ -85,35 +72,29 @@ namespace quakelib::map {
       entry.x = currentX;
       entry.y = currentY;
 
-
       rowHeight = std::max(rowHeight, entry.h);
-
 
       currentX += entry.w;
     }
 
-
     for (const auto &entry : m_entries) {
-      fvec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+      Vec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
 
       for (const auto &v : entry.face->Vertices()) {
-        fvec2 uv = entry.face->CalcLightmapUV(v.point);
+        Vec2 uv = entry.face->CalcLightmapUV(v.point);
         minUV[0] = std::min(minUV[0], uv[0]);
         minUV[1] = std::min(minUV[1], uv[1]);
       }
 
       auto &verts = entry.face->VerticesRW();
       for (auto &v : verts) {
-        fvec2 localUV = entry.face->CalcLightmapUV(v.point);
-
+        Vec2 localUV = entry.face->CalcLightmapUV(v.point);
 
         float u = (localUV[0] - minUV[0]) / m_luxelSize;
         float v_coord = (localUV[1] - minUV[1]) / m_luxelSize;
 
-
         u += entry.x;
         v_coord += entry.y;
-
 
         v.lightmap_uv[0] = u / (float)m_width;
         v.lightmap_uv[1] = v_coord / (float)m_height;
@@ -124,8 +105,7 @@ namespace quakelib::map {
     return true;
   }
 
-  void LightmapGenerator::CalculateLighting(const std::vector<Light> &lights, fvec3 ambientColor) {
-
+  void LightmapGenerator::CalculateLighting(const std::vector<Light> &lights, Vec3 ambientColor) {
 
     unsigned char ambR = static_cast<unsigned char>(std::min(1.0f, ambientColor[0]) * 255);
     unsigned char ambG = static_cast<unsigned char>(std::min(1.0f, ambientColor[1]) * 255);
@@ -139,19 +119,15 @@ namespace quakelib::map {
       m_data[i * 4 + 3] = 255;
     }
 
-
-
-
-
     for (const auto &entry : m_entries) {
-      fvec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+      Vec2 minUV = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
       for (const auto &v : entry.face->Vertices()) {
-        fvec2 uv = entry.face->CalcLightmapUV(v.point);
+        Vec2 uv = entry.face->CalcLightmapUV(v.point);
         minUV[0] = std::min(minUV[0], uv[0]);
         minUV[1] = std::min(minUV[1], uv[1]);
       }
 
-      fvec3 N = entry.face->GetPlaneNormal();
+      Vec3 N = entry.face->GetPlaneNormal();
 
       for (int y = 0; y < entry.h; ++y) {
         for (int x = 0; x < entry.w; ++x) {
@@ -159,16 +135,15 @@ namespace quakelib::map {
           float u_local = (minUV[0]) + (x * m_luxelSize) + (m_luxelSize * 0.5f);
           float v_local = (minUV[1]) + (y * m_luxelSize) + (m_luxelSize * 0.5f);
 
-
-          fvec3 worldPos = entry.face->CalcWorldPosFromLightmapUV({u_local, v_local});
+          Vec3 worldPos = entry.face->CalcWorldPosFromLightmapUV({u_local, v_local});
 
           worldPos += N * 0.5f;
 
-          fvec3 totalLight = {0, 0, 0};
+          Vec3 totalLight = {0, 0, 0};
 
           for (const auto &light : lights) {
-            fvec3 toLight = light.pos - worldPos;
-            float dist = length(toLight);
+            Vec3 toLight = light.pos - worldPos;
+            float dist = math::Len(toLight);
 
             if (dist > light.radius)
               continue;
@@ -176,9 +151,8 @@ namespace quakelib::map {
             float attenuation = std::max(0.0f, 1.0f - (dist / light.radius));
             attenuation *= attenuation;
 
-            fvec3 L = normalize(toLight);
-            float nDotL = std::max(0.0f, dot(N, L));
-
+            Vec3 L = math::Norm(toLight);
+            float nDotL = std::max(0.0f, math::Dot(N, L));
 
             totalLight += light.color * (nDotL * attenuation);
           }
@@ -188,7 +162,6 @@ namespace quakelib::map {
 
           if (atlasX < m_width && atlasY < m_height) {
             int index = (atlasY * m_width + atlasX) * 4;
-
 
             int r = m_data[index + 0];
             int g = m_data[index + 1];
@@ -210,7 +183,6 @@ namespace quakelib::map {
   void LightmapGenerator::GenerateAtlasImage() {
 
     m_data.assign(m_width * m_height * 4, 127);
-
 
     for (const auto &entry : m_entries) {
       for (int y = entry.y; y < entry.y + entry.h; ++y) {
@@ -249,4 +221,4 @@ namespace quakelib::map {
 
   const std::vector<unsigned char> &LightmapGenerator::GetAtlasData() const { return m_data; }
 
-}
+} // namespace quakelib::map

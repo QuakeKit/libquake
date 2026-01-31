@@ -28,13 +28,13 @@ namespace quakelib::map {
     int GetHeight() const { return m_height; }
 
     struct Light {
-      fvec3 pos;
+      Vec3 pos;
       float radius;
-      fvec3 color;
+      Vec3 color;
     };
 
     void CalculateLighting(const std::vector<Light> &lights,
-                           fvec3 ambientColor = {30.0f / 255.0f, 30.0f / 255.0f, 30.0f / 255.0f});
+                           Vec3 ambientColor = {30.0f / 255.0f, 30.0f / 255.0f, 30.0f / 255.0f});
 
   private:
     void GenerateAtlasImage();

@@ -5,10 +5,10 @@ namespace quakelib::map {
   static constexpr double CMP_EPSILON_DISTANCE = 0.001;
 
   void MapSurface::initPlane() {
-    fvec3 v0v1 = m_planePoints[1] - m_planePoints[0];
-    fvec3 v1v2 = m_planePoints[2] - m_planePoints[1];
-    m_planeNormal = normalize(cross(v1v2, v0v1));
-    m_planeDist = dot(m_planeNormal, m_planePoints[0]);
+    Vec3 v0v1 = m_planePoints[1] - m_planePoints[0];
+    Vec3 v1v2 = m_planePoints[2] - m_planePoints[1];
+    m_planeNormal = math::Norm(math::Cross(v1v2, v0v1));
+    m_planeDist = math::Dot(m_planeNormal, m_planePoints[0]);
   }
 
   FacePtr MapSurface::Copy() const {
@@ -40,7 +40,7 @@ namespace quakelib::map {
 
       auto v1 = p2 - p1;
       auto v2 = p3 - p1;
-      auto normal = normalize(cross(v1, v2));
+      auto normal = math::Norm(math::Cross(v1, v2));
 
       m_vertices[m_indices[i + 0]].normal = normal;
       m_vertices[m_indices[i + 1]].normal = normal;
@@ -51,7 +51,7 @@ namespace quakelib::map {
   MapSurface::eFaceClassification MapSurface::Classify(const MapSurface *other) {
     bool bFront = false, bBack = false;
     for (int i = 0; i < (int)other->m_vertices.size(); i++) {
-      double dist = dot(m_planeNormal, other->m_vertices[i].point) - m_planeDist;
+      double dist = math::Dot(m_planeNormal, other->m_vertices[i].point) - m_planeDist;
       if (dist > CMP_EPSILON_DISTANCE) {
         if (bBack) {
           return eFaceClassification::SPANNING;
@@ -76,28 +76,28 @@ namespace quakelib::map {
     return eFaceClassification::ON_PLANE;
   }
 
-  bool MapSurface::getIntersection(const fvec3 &start, const fvec3 &end, fvec3 &out_intersectionPt,
+  bool MapSurface::getIntersection(const Vec3 &start, const Vec3 &end, Vec3 &out_intersectionPt,
                                    float &out_percentage) {
-    fvec3 dir = normalize(end - start);
+    Vec3 dir = math::Norm(end - start);
     float num, denom;
 
-    denom = dot(m_planeNormal, dir);
+    denom = math::Dot(m_planeNormal, dir);
 
     if (fabs(denom) < epsilon) {
       return false;
     }
 
-    float dist = tue::math::dot(m_planeNormal, start) - m_planeDist;
+    float dist = math::Dot(m_planeNormal, start) - m_planeDist;
 
     num = -dist;
     out_percentage = num / denom;
     out_intersectionPt = start + (dir * out_percentage);
-    out_percentage = out_percentage / tue::math::length(end - start);
+    out_percentage = out_percentage / math::Len(end - start);
     return true;
   }
 
-  MapSurface::eFaceClassification MapSurface::ClassifyPoint(const fvec3 &v) {
-    double dist = tue::math::dot(m_planeNormal, v) - m_planeDist;
+  MapSurface::eFaceClassification MapSurface::ClassifyPoint(const Vec3 &v) {
+    double dist = math::Dot(m_planeNormal, v) - m_planeDist;
     if (dist > epsilon) {
       return MapSurface::eFaceClassification::FRONT;
     }
@@ -157,57 +157,63 @@ namespace quakelib::map {
     return true;
   }
 
-  fvec4 MapSurface::calcStandardTangent() {
-    float du = dot(m_planeNormal, UP_VEC);
-    float dr = dot(m_planeNormal, RIGHT_VEC);
-    float df = dot(m_planeNormal, FORWARD_VEC);
+  Vec4 MapSurface::calcStandardTangent() {
+    float du = math::Dot(m_planeNormal, math::UP_VEC);
+    float dr = math::Dot(m_planeNormal, math::RIGHT_VEC);
+    float df = math::Dot(m_planeNormal, math::FORWARD_VEC);
     float dua = fabs(du);
     float dra = fabs(dr);
     float dfa = fabs(df);
 
-    fvec3 uAxis{0};
+    Vec3 uAxis{0};
     float vSign = 0.0f;
 
     if (dua >= dra && dua >= dfa) {
-      uAxis = FORWARD_VEC;
+      uAxis = math::FORWARD_VEC;
       vSign = copysignf(1.0, du);
     } else if (dra >= dua && dra >= dfa) {
-      uAxis = FORWARD_VEC;
+      uAxis = math::FORWARD_VEC;
       vSign = -copysignf(1.0, dr);
     } else if (dfa >= dua && dfa >= dra) {
-      uAxis = RIGHT_VEC;
+      uAxis = math::RIGHT_VEC;
       vSign = copysignf(1.0, df);
     }
 
-    vSign *= copysignf(1.0, m_scaleY);
-    uAxis = tue::transform::rotation_vec(uAxis, (float)((-m_rotation * vSign) * (180.0 / M_PI)));
-    return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
+    vSign *= copysignf(1.0f, m_scaleY);
+
+    // Convert rotation to degrees for HMM
+    float angleInDegrees = (float)((-m_rotation * vSign) * (180.0 / M_PI));
+
+    // Rotate uAxis around the surface normal
+    uAxis = HMM_RotateV3AxisAngle_LH(uAxis, m_planeNormal, angleInDegrees);
+
+    return HMM_V4(uAxis.X, uAxis.Y, uAxis.Z, vSign);
   }
 
-  fvec4 MapSurface::calcValveTangent() {
-    fvec3 uAxis = normalize(m_valveUV.u.xyz());
-    fvec3 vAxis = normalize(m_valveUV.v.xyz());
-    float vSign = copysignf(1.0, dot(cross((fvec3)m_planeNormal, uAxis), vAxis));
-    return fvec4(uAxis[0], uAxis[1], uAxis[2], vSign);
+  Vec4 MapSurface::calcValveTangent() {
+    Vec3 uAxis = math::Norm(m_valveUV.u.XYZ);
+    Vec3 vAxis = math::Norm(m_valveUV.v.XYZ);
+    float vSign = copysignf(1.0, math::Dot(math::Cross((Vec3)m_planeNormal, uAxis), vAxis));
+    return Vec4{uAxis[0], uAxis[1], uAxis[2], vSign};
   }
 
-  fvec2 MapSurface::calcStandardUV(fvec3 vertex, float texW, float texH) {
-    fvec2 uvOut{0};
+  Vec2 MapSurface::calcStandardUV(Vec3 vertex, float texW, float texH) {
+    Vec2 uvOut{0};
 
-    float du = fabs(dot(m_planeNormal, UP_VEC));
-    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
-    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
+    float du = fabs(math::Dot(m_planeNormal, math::UP_VEC));
+    float dr = fabs(math::Dot(m_planeNormal, math::RIGHT_VEC));
+    float df = fabs(math::Dot(m_planeNormal, math::FORWARD_VEC));
 
     if (du >= dr && du >= df)
-      uvOut = fvec2(vertex[0], -vertex[1]);
+      uvOut = Vec2{vertex[0], -vertex[1]};
     else if (dr >= du && dr >= df)
-      uvOut = fvec2(vertex[0], -vertex[2]);
+      uvOut = Vec2{vertex[0], -vertex[2]};
     else if (df >= du && df >= dr)
-      uvOut = fvec2(vertex[1], -vertex[2]);
+      uvOut = Vec2{vertex[1], -vertex[2]};
 
     float angle = (float)(m_rotation * (M_PI / 180));
     uvOut =
-        fvec2(uvOut[0] * cos(angle) - uvOut[1] * sin(angle), uvOut[0] * sin(angle) + uvOut[1] * cos(angle));
+        Vec2{uvOut[0] * cos(angle) - uvOut[1] * sin(angle), uvOut[0] * sin(angle) + uvOut[1] * cos(angle)};
 
     uvOut[0] /= texW;
     uvOut[1] /= texH;
@@ -220,15 +226,15 @@ namespace quakelib::map {
     return uvOut;
   }
 
-  fvec2 MapSurface::calcValveUV(fvec3 vertex, float texW, float texH) {
-    fvec2 uvOut{0};
-    fvec3 uAxis = m_valveUV.u.xyz();
-    fvec3 vAxis = m_valveUV.v.xyz();
+  Vec2 MapSurface::calcValveUV(Vec3 vertex, float texW, float texH) {
+    Vec2 uvOut{0};
+    Vec3 uAxis = m_valveUV.u.XYZ;
+    Vec3 vAxis = m_valveUV.v.XYZ;
     float uShift = m_valveUV.u[3];
     float vShift = m_valveUV.v[3];
 
-    uvOut[0] = dot(uAxis, vertex);
-    uvOut[1] = dot(vAxis, vertex);
+    uvOut[0] = math::Dot(uAxis, vertex);
+    uvOut[1] = math::Dot(vAxis, vertex);
 
     uvOut[0] /= texW;
     uvOut[1] /= texH;
@@ -242,57 +248,51 @@ namespace quakelib::map {
     return uvOut;
   }
 
-  fvec2 MapSurface::calcStandardLightmapUV(fvec3 vertex) {
-    fvec2 uvOut{0};
+  Vec2 MapSurface::calcStandardLightmapUV(Vec3 vertex) {
+    Vec2 uvOut{0};
 
-    float du = fabs(dot(m_planeNormal, UP_VEC));
-    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
-    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
+    float du = fabs(math::Dot(m_planeNormal, math::UP_VEC));
+    float dr = fabs(math::Dot(m_planeNormal, math::RIGHT_VEC));
+    float df = fabs(math::Dot(m_planeNormal, math::FORWARD_VEC));
 
     if (du >= dr && du >= df)
-      uvOut = fvec2(vertex[0], -vertex[1]);
+      uvOut = Vec2{vertex[0], -vertex[1]};
     else if (dr >= du && dr >= df)
-      uvOut = fvec2(vertex[0], -vertex[2]);
+      uvOut = Vec2{vertex[0], -vertex[2]};
     else if (df >= du && df >= dr)
-      uvOut = fvec2(vertex[1], -vertex[2]);
+      uvOut = Vec2{vertex[1], -vertex[2]};
+    return uvOut;
+  }
+
+  Vec2 MapSurface::calcValveLightmapUV(Vec3 vertex) {
+    Vec2 uvOut{0};
+    Vec3 uAxis = m_valveUV.u.XYZ;
+    Vec3 vAxis = m_valveUV.v.XYZ;
+
+    uvOut[0] = math::Dot(uAxis, vertex);
+    uvOut[1] = math::Dot(vAxis, vertex);
 
     return uvOut;
   }
 
-  fvec2 MapSurface::calcValveLightmapUV(fvec3 vertex) {
-    fvec2 uvOut{0};
-    fvec3 uAxis = m_valveUV.u.xyz();
-    fvec3 vAxis = m_valveUV.v.xyz();
+  static Vec3 SolvePlanes(const Vec3 &n, float d, const Vec3 &u, float u_val, const Vec3 &v, float v_val) {
 
-    uvOut[0] = dot(uAxis, vertex);
-    uvOut[1] = dot(vAxis, vertex);
-
-    return uvOut;
-  }
-
-
-  static fvec3 SolvePlanes(const fvec3 &n, float d, const fvec3 &u, float u_val, const fvec3 &v,
-                           float v_val) {
-
-
-    fvec3 nu_cross = cross(n, u);
-    float det = dot(nu_cross, v);
+    Vec3 nu_cross = math::Cross(n, u);
+    float det = math::Dot(nu_cross, v);
 
     if (std::abs(det) < 1e-5f)
       return {0, 0, 0};
 
-
-
-    return (cross(u, v) * d + cross(v, n) * u_val + cross(n, u) * v_val) / det;
+    return (math::Cross(u, v) * d + math::Cross(v, n) * u_val + math::Cross(n, u) * v_val) / det;
   }
 
-  fvec3 MapSurface::calcWorldFromStandardLightmapUV(fvec2 uv) {
+  Vec3 MapSurface::calcWorldFromStandardLightmapUV(Vec2 uv) {
 
-    float du = fabs(dot(m_planeNormal, UP_VEC));
-    float dr = fabs(dot(m_planeNormal, RIGHT_VEC));
-    float df = fabs(dot(m_planeNormal, FORWARD_VEC));
+    float du = fabs(math::Dot(m_planeNormal, math::UP_VEC));
+    float dr = fabs(math::Dot(m_planeNormal, math::RIGHT_VEC));
+    float df = fabs(math::Dot(m_planeNormal, math::FORWARD_VEC));
 
-    fvec3 uAxis, vAxis;
+    Vec3 uAxis, vAxis;
 
     if (du >= dr && du >= df) {
 
@@ -311,9 +311,9 @@ namespace quakelib::map {
     return SolvePlanes(m_planeNormal, m_planeDist, uAxis, uv[0], vAxis, uv[1]);
   }
 
-  fvec3 MapSurface::calcWorldFromValveLightmapUV(fvec2 uv) {
-    fvec3 uAxis = m_valveUV.u.xyz();
-    fvec3 vAxis = m_valveUV.v.xyz();
+  Vec3 MapSurface::calcWorldFromValveLightmapUV(Vec2 uv) {
+    Vec3 uAxis = m_valveUV.u.XYZ;
+    Vec3 vAxis = m_valveUV.v.XYZ;
 
     return SolvePlanes(m_planeNormal, m_planeDist, uAxis, uv[0], vAxis, uv[1]);
   }
@@ -379,4 +379,4 @@ namespace quakelib::map {
     }
     return {front, back};
   }
-}
+} // namespace quakelib::map

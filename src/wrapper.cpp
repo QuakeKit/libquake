@@ -15,11 +15,11 @@
 // Global map for storing texture sizes per provider instance
 static std::map<void *, std::map<std::string, std::pair<int, int>>> g_providerTextureSizes;
 
-static QLibVec2 ToQLibVec2(const quakelib::fvec2 &v) { return {v[0], v[1]}; }
+static QLibVec2 ToQLibVec2(const quakelib::Vec2 &v) { return {v[0], v[1]}; }
 
-static QLibVec3 ToQLibVec3(const quakelib::fvec3 &v) { return {v[0], v[1], v[2]}; }
+static QLibVec3 ToQLibVec3(const quakelib::Vec3 &v) { return {v[0], v[1], v[2]}; }
 
-static QLibVec4 ToQLibVec4(const quakelib::fvec4 &v) { return {v[0], v[1], v[2], v[3]}; }
+static QLibVec4 ToQLibVec4(const quakelib::Vec4 &v) { return {v[0], v[1], v[2], v[3]}; }
 
 static QLibVertex ToQLibVertex(const quakelib::Vertex &v) {
   QLibVertex out;
@@ -599,9 +599,9 @@ API_EXPORT QLibMapData *QLibMap_ExportAll(void *mapPtr) {
       auto center = mapEntity->GetCenter();
       auto boundsMin = mapEntity->GetMin();
       auto boundsMax = mapEntity->GetMax();
-      outMesh.center = {center.x(), center.y(), center.z()};
-      outMesh.boundsMin = {boundsMin.x(), boundsMin.y(), boundsMin.z()};
-      outMesh.boundsMax = {boundsMax.x(), boundsMax.y(), boundsMax.z()};
+      outMesh.center = {center.X, center.Y, center.Z};
+      outMesh.boundsMin = {boundsMin.X, boundsMin.Y, boundsMin.Z};
+      outMesh.boundsMax = {boundsMax.X, boundsMax.Y, boundsMax.Z};
 
       // Get meshes
       auto meshes = provider->GetEntityMeshes(entity);
@@ -716,9 +716,9 @@ API_EXPORT QLibMapEntityMesh *QLibMap_GetEntityMesh(void *mapPtr, uint32_t entit
   auto center = mapEntity->GetCenter();
   auto boundsMin = mapEntity->GetMin();
   auto boundsMax = mapEntity->GetMax();
-  outMesh->center = {center.x(), center.y(), center.z()};
-  outMesh->boundsMin = {boundsMin.x(), boundsMin.y(), boundsMin.z()};
-  outMesh->boundsMax = {boundsMax.x(), boundsMax.y(), boundsMax.z()};
+  outMesh->center = {center.X, center.Y, center.Z};
+  outMesh->boundsMin = {boundsMin.X, boundsMin.Y, boundsMin.Z};
+  outMesh->boundsMax = {boundsMax.X, boundsMax.Y, boundsMax.Z};
 
   // Count totals
   uint32_t totalVerts = 0;

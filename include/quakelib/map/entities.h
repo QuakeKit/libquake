@@ -24,11 +24,11 @@ namespace quakelib::map {
 
     const std::vector<Brush> &GetClippedBrushes() const { return m_clippedBrushes; }
 
-    const fvec3 &GetCenter() const { return m_center; }
+    const Vec3 &GetCenter() const { return m_center; }
 
-    const fvec3 &GetMin() const { return m_min; }
+    const Vec3 &GetMin() const { return m_min; }
 
-    const fvec3 &GetMax() const { return m_max; }
+    const Vec3 &GetMax() const { return m_max; }
 
     void convertToOpenGLCoords();
 
@@ -51,9 +51,9 @@ namespace quakelib::map {
     long long m_stats_clippedFaces{};
     bool m_wasClipped = false;
 
-    fvec3 m_center{0};
-    fvec3 m_min{0};
-    fvec3 m_max{0};
+    Vec3 m_center{0};
+    Vec3 m_min{0};
+    Vec3 m_max{0};
 
     friend class QMapFile;
     friend class QMap;

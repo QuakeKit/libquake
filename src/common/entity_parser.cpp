@@ -10,6 +10,7 @@ namespace quakelib {
 
   static std::vector<std::string> rexec_vec(std::string line, const std::string &regexstr) {
     std::stringstream results;
+
     std::regex re(regexstr, std::regex::icase);
 
     std::vector<std::string> matches;
@@ -31,8 +32,10 @@ namespace quakelib {
     ParsedEntity *current = nullptr;
     bool foundWorldSpawn = false;
 
-    for (std::string line; std::getline(strstr, line);) {
+    for (std::string line; strstr.peek() != EOF && std::getline(strstr, line);) {
       std::erase(line, '\r');
+      std::replace(line.begin(), line.end(), '\t', ' ');
+
       if (line.empty()) {
         continue;
       }
@@ -72,7 +75,7 @@ namespace quakelib {
           current->type = EntityType::SOLID;
         }
 
-        if (!foundWorldSpawn && line == "\"classname\" \"worldspawn\"") {
+        if (!foundWorldSpawn && line == ("\"classname\" \"worldspawn\"")) {
           current->type = EntityType::WORLDSPAWN;
           foundWorldSpawn = true;
         }

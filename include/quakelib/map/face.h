@@ -1,8 +1,8 @@
 #pragma once
 
-#include "qmath.h"
 #include "types.h"
 #include <memory>
+#include <quakelib/qmath.h>
 #include <tuple>
 
 #include <quakelib/surface.h>
@@ -57,7 +57,7 @@ namespace quakelib::map {
      * @param scaleX Texture scale on X axis.
      * @param scaleY Texture scale on Y axis.
      */
-    MapSurface(const std::array<fvec3, 3> &points, int textureID, StandardUV uv, float rotation, float scaleX,
+    MapSurface(const std::array<Vec3, 3> &points, int textureID, StandardUV uv, float rotation, float scaleX,
                float scaleY)
         : m_planePoints(points), m_standardUV(uv), m_textureID(textureID), m_rotation(rotation),
           m_scaleX(scaleX), m_scaleY(scaleY) {
@@ -73,7 +73,7 @@ namespace quakelib::map {
      * @param scaleX Texture scale X.
      * @param scaleY Texture scale Y.
      */
-    MapSurface(const std::array<fvec3, 3> &points, int textureID, ValveUV uv, float rotation, float scaleX,
+    MapSurface(const std::array<Vec3, 3> &points, int textureID, ValveUV uv, float rotation, float scaleX,
                float scaleY)
         : m_planePoints(points), m_valveUV(uv), m_textureID(textureID), m_rotation(rotation),
           m_scaleX(scaleX), m_scaleY(scaleY), m_hasValveUV(true) {
@@ -92,7 +92,7 @@ namespace quakelib::map {
      * @param v The point to test.
      * @return The classification.
      */
-    MapSurface::eFaceClassification ClassifyPoint(const fvec3 &v);
+    MapSurface::eFaceClassification ClassifyPoint(const Vec3 &v);
 
     /**
      * @brief Recalculates AABB (Axis Aligned Bounding Box).
@@ -120,7 +120,7 @@ namespace quakelib::map {
      * @brief Gets the normal vector of the face's plane.
      * @return The plane normal.
      */
-    const fvec3 &GetPlaneNormal() const { return m_planeNormal; }
+    const Vec3 &GetPlaneNormal() const { return m_planeNormal; }
 
     /**
      * @brief Gets the distance of the plane from the origin.
@@ -133,7 +133,7 @@ namespace quakelib::map {
      * @param vertex The vertex position.
      * @return The calculated UV coordinates.
      */
-    fvec2 CalcLightmapUV(fvec3 vertex) {
+    Vec2 CalcLightmapUV(Vec3 vertex) {
       return m_hasValveUV ? calcValveLightmapUV(vertex) : calcStandardLightmapUV(vertex);
     };
 
@@ -142,7 +142,7 @@ namespace quakelib::map {
      * @param uv The lightmap UV coordinates.
      * @return The corresponding world position.
      */
-    fvec3 CalcWorldPosFromLightmapUV(fvec2 uv) {
+    Vec3 CalcWorldPosFromLightmapUV(Vec2 uv) {
       return m_hasValveUV ? calcWorldFromValveLightmapUV(uv) : calcWorldFromStandardLightmapUV(uv);
     }
 
@@ -152,32 +152,31 @@ namespace quakelib::map {
      */
     eFaceType Type() const { return m_type; }
 
-    fvec3 center{}, min{}, max{}; ///< Geometric properties: center and AABB bounds.
+    Vec3 center{}, min{}, max{}; ///< Geometric properties: center and AABB bounds.
 
     bool operator==(const MapSurface &arg_) const;
 
   private:
-    fvec4 CalcTangent() { return m_hasValveUV ? calcValveTangent() : calcStandardTangent(); };
+    Vec4 CalcTangent() { return m_hasValveUV ? calcValveTangent() : calcStandardTangent(); };
 
-    fvec2 CalcUV(fvec3 vertex, float texW, float texH) {
+    Vec2 CalcUV(Vec3 vertex, float texW, float texH) {
       return m_hasValveUV ? calcValveUV(vertex, texW, texH) : calcStandardUV(vertex, texW, texH);
     };
 
     void initPlane();
-    fvec4 calcStandardTangent();
-    fvec4 calcValveTangent();
-    fvec2 calcStandardUV(fvec3 vertex, float texW, float texH);
-    fvec2 calcValveUV(fvec3 vertex, float texW, float texH);
-    fvec2 calcStandardLightmapUV(fvec3 vertex);
-    fvec2 calcValveLightmapUV(fvec3 vertex);
-    fvec3 calcWorldFromStandardLightmapUV(fvec2 uv);
-    fvec3 calcWorldFromValveLightmapUV(fvec2 uv);
-    bool getIntersection(const fvec3 &start, const fvec3 &end, fvec3 &out_intersectionPt,
-                         float &out_percentage);
+    Vec4 calcStandardTangent();
+    Vec4 calcValveTangent();
+    Vec2 calcStandardUV(Vec3 vertex, float texW, float texH);
+    Vec2 calcValveUV(Vec3 vertex, float texW, float texH);
+    Vec2 calcStandardLightmapUV(Vec3 vertex);
+    Vec2 calcValveLightmapUV(Vec3 vertex);
+    Vec3 calcWorldFromStandardLightmapUV(Vec2 uv);
+    Vec3 calcWorldFromValveLightmapUV(Vec2 uv);
+    bool getIntersection(const Vec3 &start, const Vec3 &end, Vec3 &out_intersectionPt, float &out_percentage);
     std::pair<FacePtr, FacePtr> splitFace(const MapSurface *other);
 
-    std::array<fvec3, 3> m_planePoints{};
-    fvec3 m_planeNormal{};
+    std::array<Vec3, 3> m_planePoints{};
+    Vec3 m_planeNormal{};
     float m_planeDist{};
     StandardUV m_standardUV{};
     ValveUV m_valveUV{};

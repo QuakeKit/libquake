@@ -72,10 +72,12 @@ void printMetrics() {
   std::cout << std::endl;
   std::cout << " Metric                 │ Time (ms)" << std::endl;
   std::cout << "────────────────────────┼──────────" << std::endl;
+
   std::cout << " Geometry Generate      │ " << std::setw(8) << Metrics::instance().getMetrics("geo_generate");
   std::cout << std::endl;
   std::cout << " Mesh Convert           │ " << std::setw(8) << Metrics::instance().getMetrics("mesh_convert");
   std::cout << std::endl;
+
   std::cout << "────────────────────────┼──────────" << std::endl;
   std::cout << " Total                  │ " << std::setw(8) << Metrics::instance().getMetrics("Total");
   std::cout << std::endl;
